@@ -290,10 +290,12 @@ def nm_identify(ctx, args, **kw):
            "assembly-instructions page; look for a direct https link to the PDF. When you find it, call "
            "nm_attach_manual with pdf_url and source_page. Don't attach manuals for a different product.")
     if not found_something or conf < 0.4:
-        nxt = ("Not enough to identify it. Ask for a photo of a label, sticker or stamped number (under "
-               "shelves, back panel, inside doors). If there is none: " +
-               ("only the official manual is allowed for this piece; suggest contacting the manufacturer."
-                if p.blocked else "use the recorder (if assembled) or the solver (if in pieces)."))
+        fallback = ("only the official manual is allowed for this piece; suggest contacting the manufacturer."
+                    if p.blocked else "use the recorder (if assembled) or the solver (if in pieces).")
+        nxt = ("Not identified with confidence. Ask for a photo of a label, sticker or stamped number (under "
+               "shelves, back panel, inside doors). If the user named a brand, you may still run web_search "
+               "with search_queries, but present any match as a possibility and ask the user to confirm it "
+               "is their exact piece before attaching it. If nothing turns up: " + fallback)
     return _ok(project_id=p.id, brand=ident.get("brand", ""), product_name=ident.get("product_name", ""),
                article_numbers=ident.get("article_numbers") or [], category_guess=ident.get("category_guess"),
                confidence=conf, search_queries=ident.get("search_queries") or [],

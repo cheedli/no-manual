@@ -61,7 +61,11 @@ def download(url: str, dest: Path, opener=urllib.request.urlopen) -> Path:
 
 
 def render_pages(pdf_path: Path, out_dir: Path) -> list[str]:
-    import pypdfium2 as pdfium
+    try:
+        import pypdfium2 as pdfium
+    except ImportError:  # deps installed after the gateway started (seen in E2E, docs/03 §11)
+        raise ManualError("PDF support isn't loaded yet: run `hermes gateway restart` once after "
+                          "installing No Manual, then try again.")
     if not Path(pdf_path).read_bytes()[:4] == b"%PDF":
         raise ManualError("That file isn't a PDF.")
     out_dir.mkdir(parents=True, exist_ok=True)
