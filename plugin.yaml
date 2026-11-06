@@ -15,6 +15,8 @@ provides_tools:
   - nm_record_stage
   - nm_finish_recording
   - nm_get_step
+  - nm_identify
+  - nm_attach_manual
 provides_hooks:
   - pre_llm_call
   - pre_tool_call

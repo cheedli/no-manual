@@ -39,6 +39,39 @@ STAGE_INSTRUCTIONS = (
     "confidence is 0-1 for how sure you are about removed_parts.")
 
 
+IDENTIFY_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "brand": {"type": "string", "description": "Brand or maker, '' if not visible"},
+        "product_name": {"type": "string", "description": "Product/model name, '' if not visible"},
+        "article_numbers": {"type": "array", "items": {"type": "string"},
+                            "description": "Article/model/part numbers exactly as printed"},
+        "visible_text": {"type": "string", "description": "Other text on labels or stamps"},
+        "category_guess": {"type": "string",
+                           "description": "bookcase, wardrobe, closet, cabinet, nightstand, desk, crib, "
+                                          "bunk_bed, bed, high_chair, chair, sofa, other"},
+        "confidence": {"type": "number", "description": "0-1: how sure the identification is"},
+        "search_queries": {"type": "array", "items": {"type": "string"},
+                           "description": "2-4 web searches most likely to find the official assembly "
+                                          "instructions PDF"},
+    },
+    "required": ["brand", "product_name", "article_numbers", "category_guess", "confidence", "search_queries"],
+}
+
+IDENTIFY_INSTRUCTIONS = (
+    "Identify this piece of furniture so we can find its official assembly manual. Read every label, "
+    "sticker, stamp and printed number exactly as written (article numbers like 'AA-2289541-3' or "
+    "'802.758.87' are gold). Recognise the brand from logos or typical design if you can, but don't "
+    "invent model names: leave fields empty if not visible. Then propose web searches, e.g. "
+    "'<brand> <article number> assembly instructions pdf'.")
+
+
+def identify_input(images: list[bytes], user_text: str) -> list[dict]:
+    blocks: list[dict] = [{"type": "text", "text": f"User says: {user_text or '(nothing)'}"}]
+    blocks += [{"type": "image", "data": b, "mime_type": "image/jpeg"} for b in images]
+    return blocks
+
+
 def stage_input(prev_jpeg: bytes, cur_jpeg: bytes, user_text: str) -> list[dict]:
     return [
         {"type": "text", "text": f"User says they removed: {user_text or '(not stated)'}"},

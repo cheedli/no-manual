@@ -76,3 +76,21 @@ NM_GET_STEP = _s(
     "Get one assembly step (title, instruction, hardware, image path) to send to the user. Omit "
     "index for the current step. Send ONE step at a time.",
     {"project_id": _PID, "index": {"type": "integer", "description": "1-based step number; omit for current"}})
+
+NM_IDENTIFY = _s(
+    "nm_identify",
+    "Identify the furniture from photos (labels, stickers, stamped article numbers, brand marks, shape) "
+    "and get web searches for its official assembly manual. Call this early for every project: the "
+    "official manual is always the best answer. Pass new label photos in image_paths if the user just "
+    "sent them.",
+    {"project_id": _PID, "image_paths": _PATHS, "recent": _RECENT,
+     "user_text": {"type": "string", "description": "Anything the user knows: brand, store, model name"}})
+
+NM_ATTACH_MANUAL = _s(
+    "nm_attach_manual",
+    "Attach the official assembly manual once you found it (after nm_identify + web_search), or a PDF "
+    "the user sent. Downloads the PDF (https only, max 30 MB) and turns its pages into steps.",
+    {"project_id": _PID,
+     "pdf_url": {"type": "string", "description": "Direct https URL of the PDF manual"},
+     "pdf_path": {"type": "string", "description": "Local PDF path if the user sent the file"},
+     "source_page": {"type": "string", "description": "Page where you found it, for attribution"}})

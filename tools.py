@@ -261,6 +261,78 @@ def nm_get_step(ctx, args, **kw):
                     "Ask the user to send a photo when the step is done.")
 
 
+def nm_identify(ctx, args, **kw):
+    p = _load(args)
+    paths = _paths(args, p)
+    if paths:
+        ph.add_photos(p, paths, "label", "", get_store().project_dir(p.id))
+    pics = sorted(p.photos, key=lambda x: {"label": 0, "overview": 1}.get(x["kind"], 2))
+    pics = [x for x in pics if x["kind"] in ("label", "overview", "panel", "stage")][:6]
+    if not pics:
+        raise ToolError("I need a photo first.", "Ask for a photo of any label, sticker or stamped number "
+                                                 "(often under a shelf, on the back panel or inside a door).")
+    r = ctx.llm.complete_structured(
+        instructions=vision.IDENTIFY_INSTRUCTIONS,
+        input=vision.identify_input([ph.for_vision(x["path"])[0] for x in pics], args.get("user_text") or ""),
+        json_schema=vision.IDENTIFY_SCHEMA, timeout=60, purpose="no-manual.identify")
+    ident = r.parsed if r.content_type == "json" and isinstance(r.parsed, dict) else {}
+    if not ident:
+        raise ToolError("Couldn't read the photos.", "Ask for a closer, well-lit photo of the label.")
+    p.identity = ident
+    p.state = "identifying" if not p.blocked else p.state
+    newly_blocked = safety.apply_vision_guess(p, ident.get("category_guess"), float(ident.get("confidence") or 0))
+    if newly_blocked:
+        p.state = "blocked"
+    get_store().save(p)
+    conf = float(ident.get("confidence") or 0)
+    found_something = bool(ident.get("brand") or ident.get("article_numbers") or ident.get("product_name"))
+    nxt = ("Run web_search with search_queries. Prefer the manufacturer's own site or its official "
+           "assembly-instructions page; look for a direct https link to the PDF. When you find it, call "
+           "nm_attach_manual with pdf_url and source_page. Don't attach manuals for a different product.")
+    if not found_something or conf < 0.4:
+        nxt = ("Not enough to identify it. Ask for a photo of a label, sticker or stamped number (under "
+               "shelves, back panel, inside doors). If there is none: " +
+               ("only the official manual is allowed for this piece; suggest contacting the manufacturer."
+                if p.blocked else "use the recorder (if assembled) or the solver (if in pieces)."))
+    return _ok(project_id=p.id, brand=ident.get("brand", ""), product_name=ident.get("product_name", ""),
+               article_numbers=ident.get("article_numbers") or [], category_guess=ident.get("category_guess"),
+               confidence=conf, search_queries=ident.get("search_queries") or [],
+               safety_status=p.safety_status,
+               safety_note=(f"{p.safety_reason} {safety.BLOCK_MESSAGE}" if newly_blocked else None), next=nxt)
+
+
+def nm_attach_manual(ctx, args, **kw):
+    from urllib.parse import urlparse
+    from .core import manual
+    p = _load(args)
+    d = get_store().project_dir(p.id) / "manual"
+    url, local = (args.get("pdf_url") or "").strip(), (args.get("pdf_path") or "").strip()
+    try:
+        if url:
+            pdf = manual.download(url, d / "manual.pdf")
+            source = args.get("source_page") or url
+        elif local:
+            pdf = Path(local).expanduser()
+            if not pdf.is_file():
+                raise manual.ManualError("PDF file not found.")
+            source = args.get("source_page") or "a PDF you provided"
+        else:
+            raise manual.ManualError("Give pdf_url (https) or pdf_path.")
+        pages = manual.render_pages(pdf, d / "pages")
+    except manual.ManualError as e:
+        raise ToolError(str(e), "Look for a direct https link to the manufacturer's PDF, or ask the user "
+                                "to download it and send the file.")
+    if not pages:
+        raise ToolError("The PDF has no pages.", "Find another copy of the manual.")
+    domain = urlparse(source).hostname or source
+    p.plan = {"source": "manual", "confidence": 0.95, "steps": manual.pages_to_steps(pages), "warnings": []}
+    p.manual_source, p.mode, p.state, p.current_step = source, "manual", "coaching", 1
+    get_store().save(p)
+    return _ok(project_id=p.id, pages=len(pages), steps=len(pages), first_step_image=pages[0],
+               source=source, next=f"Tell the user: 'Official manual from {domain}, {len(pages)} pages.' "
+               "Then call nm_get_step to send page 1. Skip cover/warning pages if the user wants. " + MEDIA_NOTE)
+
+
 TOOLS = [
     ("nm_start_project", schemas.NM_START_PROJECT, nm_start_project),
     ("nm_add_photos", schemas.NM_ADD_PHOTOS, nm_add_photos),
@@ -269,6 +341,8 @@ TOOLS = [
     ("nm_record_stage", schemas.NM_RECORD_STAGE, nm_record_stage),
     ("nm_finish_recording", schemas.NM_FINISH_RECORDING, nm_finish_recording),
     ("nm_get_step", schemas.NM_GET_STEP, nm_get_step),
+    ("nm_identify", schemas.NM_IDENTIFY, nm_identify),
+    ("nm_attach_manual", schemas.NM_ATTACH_MANUAL, nm_attach_manual),
 ]
 
 
