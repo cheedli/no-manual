@@ -15,8 +15,9 @@ from .core.store import Store
 
 log = logging.getLogger(__name__)
 
-MEDIA_NOTE = ("To show an image, write MEDIA:<image_path> on its own line in your reply, "
-              "outside any code block or quote.")
+MEDIA_NOTE = ("To show the image on a messaging app or Hermes Desktop, write MEDIA:<image_path> on its "
+              "own line, outside any code block or quote. In a terminal, follow the platform's file rule "
+              "(give the plain path).")
 
 # Injected in tests; built lazily from Hermes storage in the plugin.
 _store: Store | None = None

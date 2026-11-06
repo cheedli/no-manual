@@ -7,7 +7,8 @@ from .safety import ANTI_TIP_STEP, needs_anti_tip
 def _title(described: dict, user_text: str) -> str:
     parts = [p for p in described.get("removed_parts") or [] if p]
     if parts:
-        t = "Attach the " + ", ".join(parts[:3])
+        parts = parts[:3]
+        t = "Attach the " + (", ".join(parts[:-1]) + " and " + parts[-1] if len(parts) > 1 else parts[0])
     elif user_text:
         t = "Put back: " + user_text
     else:

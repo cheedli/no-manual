@@ -11,8 +11,9 @@ description: Use when someone needs to assemble or reassemble furniture without 
 - If a tool returns `question`, `questions` or `error` + `hint`, follow it: ask the user, don't guess.
 - Image paths you receive from the user go in `image_paths` (absolute paths). If you don't have
   paths, pass `recent: true`.
-- **Sending images:** write `MEDIA:<absolute_path>` on its own line, outside any code block, quote
-  or JSON. One image per step. Never paste raw tool JSON to the user.
+- **Sending images:** on messaging apps (Telegram, WhatsApp…) and Hermes Desktop, write
+  `MEDIA:<absolute_path>` on its own line, outside any code block, quote or JSON. In a terminal,
+  follow the platform's file rule (plain path). One image per step. Never paste raw tool JSON.
 
 ## Flow
 1. **Start.** Call `nm_start_project` with the category the user names (closet, bookcase…).
