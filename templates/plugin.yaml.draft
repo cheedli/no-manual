@@ -1,0 +1,31 @@
+name: no-manual
+version: 0.1.0
+manifest_version: 2
+api_version: 1
+description: Furniture with no instructions? Find the manual, record your disassembly, or solve flat-pack assembly from photos, then get step-by-step coaching with photo checks.
+author: <you>
+license: MIT
+homepage: https://github.com/<you>/no-manual
+tags: [furniture, assembly, vision, home]
+requires_hermes: ">=<version you tested on>"   # verify field name/placement in live docs
+provides_tools:
+  - nm_start_project
+  - nm_add_photos
+  - nm_set_details
+  - nm_identify
+  - nm_attach_manual
+  - nm_record_stage
+  - nm_finish_recording
+  - nm_extract_parts
+  - nm_confirm_parts
+  - nm_solve
+  - nm_render_steps
+  - nm_get_step
+  - nm_check_step
+  - nm_status
+provides_hooks:
+  - pre_llm_call
+  - pre_tool_call
+config_schema:
+  units: {type: str, default: "metric", description: "metric or imperial for displayed sizes"}
+  max_photos_per_call: {type: int, default: 6, description: "images per vision call"}

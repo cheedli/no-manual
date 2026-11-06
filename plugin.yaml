@@ -1,0 +1,22 @@
+name: no-manual
+version: 0.1.0
+manifest_version: 2
+api_version: 1
+description: Furniture with no instructions? Find the manual, record your disassembly, or solve flat-pack assembly from photos, then get step-by-step coaching with photo checks.
+author: Octav3rse
+license: MIT
+tags: [furniture, assembly, vision, home]
+requires_hermes: ">=0.23.0"
+provides_tools:
+  - nm_start_project
+  - nm_add_photos
+  - nm_set_details
+  - nm_status
+  - nm_record_stage
+  - nm_finish_recording
+  - nm_get_step
+provides_hooks:
+  - pre_llm_call
+  - pre_tool_call
+config_schema:
+  units: {type: str, choices: [metric, imperial], default: metric, description: "Units for displayed sizes"}
