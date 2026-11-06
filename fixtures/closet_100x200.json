@@ -1,0 +1,145 @@
+{
+ "category": "closet",
+ "outer": {
+  "w": 1000,
+  "h": 2000,
+  "d": 600
+ },
+ "template": "T1",
+ "parts": [
+  {
+   "id": "P1",
+   "dims_mm": {
+    "length": 2000,
+    "width": 580,
+    "thickness": 18
+   },
+   "quantity": 2,
+   "holes": {
+    "cam_bolt": 5,
+    "dowel_face": 5,
+    "shelf_pin": 8
+   },
+   "groove": true
+  },
+  {
+   "id": "P2",
+   "dims_mm": {
+    "length": 964,
+    "width": 560,
+    "thickness": 18
+   },
+   "quantity": 1,
+   "holes": {
+    "cam_housing": 4,
+    "dowel_edge": 4,
+    "screw": 4
+   }
+  },
+  {
+   "id": "P3",
+   "dims_mm": {
+    "length": 964,
+    "width": 560,
+    "thickness": 18
+   },
+   "quantity": 1,
+   "holes": {
+    "cam_housing": 4,
+    "dowel_edge": 4
+   }
+  },
+  {
+   "id": "P4",
+   "dims_mm": {
+    "length": 964,
+    "width": 80,
+    "thickness": 18
+   },
+   "quantity": 1,
+   "holes": {
+    "cam_housing": 2,
+    "dowel_edge": 2
+   }
+  },
+  {
+   "id": "P5",
+   "dims_mm": {
+    "length": 960,
+    "width": 540,
+    "thickness": 18
+   },
+   "quantity": 1,
+   "holes": {}
+  },
+  {
+   "id": "P6",
+   "dims_mm": {
+    "length": 1990,
+    "width": 990,
+    "thickness": 3
+   },
+   "quantity": 1,
+   "holes": {}
+  },
+  {
+   "id": "P7",
+   "dims_mm": {
+    "length": 1915,
+    "width": 497,
+    "thickness": 18
+   },
+   "quantity": 2,
+   "holes": {
+    "hinge_cup": 2
+   }
+  }
+ ],
+ "hardware": [
+  {
+   "kind": "cam_lock",
+   "count": 10
+  },
+  {
+   "kind": "cam_bolt",
+   "count": 10
+  },
+  {
+   "kind": "dowel",
+   "count": 10
+  },
+  {
+   "kind": "shelf_pin",
+   "count": 4
+  },
+  {
+   "kind": "hinge",
+   "count": 4
+  },
+  {
+   "kind": "rail",
+   "count": 1
+  },
+  {
+   "kind": "wall_anchor",
+   "count": 1
+  }
+ ],
+ "expected_titles": [
+  "Sort the parts and hardware",
+  "Insert cam bolts and dowels into the sides",
+  "Insert cam locks into the top and bottom",
+  "Lay the left side flat, inner face up",
+  "Attach the bottom",
+  "Attach the top",
+  "Attach the plinth",
+  "Slide in the back panel",
+  "Add the right side and tighten the cam locks",
+  "Square the frame",
+  "Stand it upright",
+  "Place the loose shelf on shelf pins",
+  "Hang the doors",
+  "Fit the hanging rail",
+  "Anchor it to the wall"
+ ]
+}

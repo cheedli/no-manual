@@ -38,6 +38,19 @@ Disambiguation rules:
   inner face (holes face inward). Edge banding faces front.
 - Anything unmatched → role `unknown`, warning, question to the user.
 
+### Implementation notes (Day 2, 7 Nov)
+- Holes are stored as **per-kind counts** (`cam_housing`, `cam_bolt`, `dowel_edge`, `dowel_face`,
+  `shelf_pin`, `hinge_cup`, `screw`) + `groove: bool`, not positions: enough for the templates and
+  what vision can actually report (ADR-005).
+- Tolerances widened after writing fixtures: shelf depth `D − (0…80)` (closet shelves sit behind
+  doors), door height `H − (0…130)` (doors above a plinth), back panel matched in either orientation
+  (wide cabinets).
+- Top/bottom pick: rail-support screw holes → top; with a plinth, extra holes → bottom; otherwise
+  identical boards are reported as interchangeable. Deepest joined boards are top/bottom, the rest
+  fixed shelves.
+- Grooved back slides in **before** the right side (grooves are closed once the frame is shut).
+- Placements are axis-aligned world boxes (no rotations).
+
 ## 3. Templates
 Each template is an ordered list of **operations** with preconditions.
 

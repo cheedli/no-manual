@@ -1,0 +1,125 @@
+{
+ "category": "bookcase",
+ "outer": {
+  "w": 800,
+  "h": 1800,
+  "d": 300
+ },
+ "template": "T1",
+ "parts": [
+  {
+   "id": "P1",
+   "dims_mm": {
+    "length": 1800,
+    "width": 300,
+    "thickness": 16
+   },
+   "quantity": 2,
+   "holes": {
+    "cam_bolt": 6,
+    "dowel_face": 6,
+    "shelf_pin": 12
+   }
+  },
+  {
+   "id": "P2",
+   "dims_mm": {
+    "length": 768,
+    "width": 290,
+    "thickness": 16
+   },
+   "quantity": 1,
+   "holes": {
+    "cam_housing": 4,
+    "dowel_edge": 4
+   }
+  },
+  {
+   "id": "P3",
+   "dims_mm": {
+    "length": 768,
+    "width": 290,
+    "thickness": 16
+   },
+   "quantity": 1,
+   "holes": {
+    "cam_housing": 4,
+    "dowel_edge": 4
+   }
+  },
+  {
+   "id": "P4",
+   "dims_mm": {
+    "length": 768,
+    "width": 280,
+    "thickness": 16
+   },
+   "quantity": 1,
+   "holes": {
+    "cam_housing": 4,
+    "dowel_edge": 4
+   }
+  },
+  {
+   "id": "P5",
+   "dims_mm": {
+    "length": 764,
+    "width": 270,
+    "thickness": 16
+   },
+   "quantity": 3,
+   "holes": {}
+  },
+  {
+   "id": "P6",
+   "dims_mm": {
+    "length": 1790,
+    "width": 790,
+    "thickness": 3
+   },
+   "quantity": 1,
+   "holes": {}
+  }
+ ],
+ "hardware": [
+  {
+   "kind": "cam_lock",
+   "count": 12
+  },
+  {
+   "kind": "cam_bolt",
+   "count": 12
+  },
+  {
+   "kind": "dowel",
+   "count": 12
+  },
+  {
+   "kind": "shelf_pin",
+   "count": 12
+  },
+  {
+   "kind": "nail",
+   "count": 30
+  },
+  {
+   "kind": "wall_anchor",
+   "count": 1
+  }
+ ],
+ "expected_titles": [
+  "Sort the parts and hardware",
+  "Insert cam bolts and dowels into the sides",
+  "Insert cam locks into the top, bottom and shelves",
+  "Lay the left side flat, inner face up",
+  "Attach the bottom",
+  "Attach the top",
+  "Attach the fixed shelf",
+  "Add the right side and tighten the cam locks",
+  "Square the frame",
+  "Nail on the back panel",
+  "Stand it upright",
+  "Place the loose shelves on shelf pins",
+  "Anchor it to the wall"
+ ]
+}

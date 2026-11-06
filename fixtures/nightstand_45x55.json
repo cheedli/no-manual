@@ -1,0 +1,90 @@
+{
+ "category": "nightstand",
+ "outer": {
+  "w": 450,
+  "h": 550,
+  "d": 400
+ },
+ "template": "T2",
+ "parts": [
+  {
+   "id": "P1",
+   "dims_mm": {
+    "length": 518,
+    "width": 380,
+    "thickness": 16
+   },
+   "quantity": 2,
+   "holes": {
+    "dowel_edge": 4,
+    "shelf_pin": 4
+   }
+  },
+  {
+   "id": "P2",
+   "dims_mm": {
+    "length": 450,
+    "width": 400,
+    "thickness": 16
+   },
+   "quantity": 1,
+   "holes": {
+    "dowel_face": 4
+   }
+  },
+  {
+   "id": "P3",
+   "dims_mm": {
+    "length": 450,
+    "width": 400,
+    "thickness": 16
+   },
+   "quantity": 1,
+   "holes": {
+    "dowel_face": 4
+   }
+  },
+  {
+   "id": "P4",
+   "dims_mm": {
+    "length": 540,
+    "width": 440,
+    "thickness": 3
+   },
+   "quantity": 1,
+   "holes": {}
+  },
+  {
+   "id": "P5",
+   "dims_mm": {
+    "length": 418,
+    "width": 370,
+    "thickness": 16
+   },
+   "quantity": 1,
+   "holes": {}
+  }
+ ],
+ "hardware": [
+  {
+   "kind": "dowel",
+   "count": 8
+  },
+  {
+   "kind": "shelf_pin",
+   "count": 4
+  },
+  {
+   "kind": "nail",
+   "count": 12
+  }
+ ],
+ "expected_titles": [
+  "Sort the parts and hardware",
+  "Insert dowels",
+  "Fit the sides to the bottom",
+  "Fit the top",
+  "Nail on the back panel",
+  "Place the loose shelf on shelf pins"
+ ]
+}

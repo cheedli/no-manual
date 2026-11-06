@@ -1,0 +1,43 @@
+{
+ "category": "bookcase",
+ "outer": {
+  "w": 800,
+  "h": 1800,
+  "d": 300
+ },
+ "template": "T1",
+ "parts": [
+  {
+   "id": "P1",
+   "dims_mm": {
+    "length": 1800,
+    "width": 300,
+    "thickness": 16
+   },
+   "quantity": 2,
+   "holes": {}
+  },
+  {
+   "id": "P2",
+   "dims_mm": {
+    "length": 768,
+    "width": 290,
+    "thickness": 16
+   },
+   "quantity": 4,
+   "holes": {}
+  },
+  {
+   "id": "P3",
+   "dims_mm": {
+    "length": 1790,
+    "width": 790,
+    "thickness": 3
+   },
+   "quantity": 1,
+   "holes": {}
+  }
+ ],
+ "hardware": [],
+ "expect_questions": true
+}

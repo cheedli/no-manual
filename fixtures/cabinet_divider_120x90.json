@@ -1,0 +1,110 @@
+{
+ "category": "cabinet",
+ "outer": {
+  "w": 1200,
+  "h": 900,
+  "d": 450
+ },
+ "template": "T1",
+ "parts": [
+  {
+   "id": "P1",
+   "dims_mm": {
+    "length": 900,
+    "width": 450,
+    "thickness": 18
+   },
+   "quantity": 2,
+   "holes": {
+    "cam_bolt": 4,
+    "dowel_face": 4
+   }
+  },
+  {
+   "id": "P2",
+   "dims_mm": {
+    "length": 1164,
+    "width": 430,
+    "thickness": 18
+   },
+   "quantity": 1,
+   "holes": {
+    "cam_housing": 4,
+    "dowel_edge": 4,
+    "dowel_face": 2
+   }
+  },
+  {
+   "id": "P3",
+   "dims_mm": {
+    "length": 1164,
+    "width": 430,
+    "thickness": 18
+   },
+   "quantity": 1,
+   "holes": {
+    "cam_housing": 4,
+    "dowel_edge": 4,
+    "dowel_face": 2
+   }
+  },
+  {
+   "id": "P4",
+   "dims_mm": {
+    "length": 864,
+    "width": 430,
+    "thickness": 18
+   },
+   "quantity": 1,
+   "holes": {
+    "dowel_edge": 4
+   }
+  },
+  {
+   "id": "P5",
+   "dims_mm": {
+    "length": 1190,
+    "width": 890,
+    "thickness": 3
+   },
+   "quantity": 1,
+   "holes": {}
+  }
+ ],
+ "hardware": [
+  {
+   "kind": "cam_lock",
+   "count": 8
+  },
+  {
+   "kind": "cam_bolt",
+   "count": 8
+  },
+  {
+   "kind": "dowel",
+   "count": 12
+  },
+  {
+   "kind": "nail",
+   "count": 20
+  },
+  {
+   "kind": "wall_anchor",
+   "count": 1
+  }
+ ],
+ "expected_titles": [
+  "Sort the parts and hardware",
+  "Insert cam bolts and dowels into the sides",
+  "Insert cam locks into the top and bottom",
+  "Lay the left side flat, inner face up",
+  "Attach the bottom",
+  "Attach the divider",
+  "Attach the top",
+  "Add the right side and tighten the cam locks",
+  "Square the frame",
+  "Nail on the back panel",
+  "Stand it upright",
+  "Anchor it to the wall"
+ ]
+}
