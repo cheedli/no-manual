@@ -246,7 +246,10 @@ function StepViewer(props) {
       if (!live) return
       if (!s || s.version !== 1 || !Array.isArray(s.steps) || !s.steps.length) { setFailed(true); return }
       setScene(s)
-      const want = Number(res.index) || s.steps.length
+      // The host credits a MEDIA file to the FIRST tool that named it (nm_render_steps lists every
+      // step image), so read the step from the file name before trusting the result's index.
+      const m = /step_(\d+)\.png$/.exec(file?.name || file?.path || '')
+      const want = (m && Number(m[1])) || Number(res.index) || s.steps.length
       setIdx(Math.max(0, Math.min(s.steps.length - 1, want - 1)))
     }, () => live && setFailed(true))
     return () => { live = false }

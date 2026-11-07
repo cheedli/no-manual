@@ -27772,7 +27772,8 @@ function StepViewer(props) {
         return;
       }
       setScene(s);
-      const want = Number(res.index) || s.steps.length;
+      const m = /step_(\d+)\.png$/.exec(file?.name || file?.path || "");
+      const want = m && Number(m[1]) || Number(res.index) || s.steps.length;
       setIdx(Math.max(0, Math.min(s.steps.length - 1, want - 1)));
     }, () => live && setFailed(true));
     return () => {
