@@ -93,9 +93,15 @@ def test_low_confidence_does_not_render(plugin, tmp_path):
     call("nm_extract_parts", project_id=pid)
     s = call("nm_solve", project_id=pid)
     assert s["steps"] == 0 and s["questions"] and "error" in call("nm_render_steps", project_id=pid)
-    # user answers: P2 boards — the first two are top/bottom, all confirmed
-    c = call("nm_confirm_parts", project_id=pid, confirm_all=True,
-             hardware=[{"kind": "shelf_pin", "count": 8}, {"kind": "wall_anchor", "count": 1}])
+    c = call("nm_confirm_parts", project_id=pid, confirm_all=True)
+    assert c["confidence"] < 0.6  # "looks right" doesn't say which boards are top/bottom
+    # user answers the question: one of the identical boards is the top, another the bottom
+    c = call("nm_confirm_parts", project_id=pid, updates=[{"part_id": "P2", "role": "top"},
+                                                          {"part_id": "P2.2", "role": "bottom"}],
+             confirm_all=True, hardware=[{"kind": "shelf_pin", "count": 8}, {"kind": "wall_anchor", "count": 1}])
+    ids = [x["id"] for x in c["parts"]]
+    assert len(ids) == len(set(ids)) and "P2 is now P4" in c["changed"][0]
+    assert {x["role_guess"] for x in c["parts"] if x["id"] in ("P4", "P5")} == {"top", "bottom"}
     assert c["confidence"] >= 0.75
     assert call("nm_solve", project_id=pid)["steps"] > 0
 
@@ -155,3 +161,70 @@ def test_scene_path_guard(tmp_path):
     assert safe_scene_path(str(tmp_path / "secret.json"), root) is None
     assert safe_scene_path(str(root / "projects/ab/steps/other.json"), root) is None
     assert safe_scene_path("/nope/scene.json", root) is None
+
+
+def test_blocked_after_solve_hides_generated_steps(bookcase, tmp_path):
+    ctx, call, pid, fx = bookcase
+    call("nm_extract_parts", project_id=pid)
+    call("nm_solve", project_id=pid)
+    call("nm_render_steps", project_id=pid)
+    assert call("nm_get_step", project_id=pid)["index"] == 1
+    ctx.llm.responses = [{"brand": "", "product_name": "", "article_numbers": [], "category_guess": "crib",
+                          "confidence": 0.9, "search_queries": []}]
+    call("nm_identify", project_id=pid, image_paths=[str(make_jpeg(tmp_path / "lbl.jpg", (3, 4, 5)))])
+    assert "error" in call("nm_get_step", project_id=pid)
+    assert "error" in call("nm_check_step", project_id=pid, image_paths=[str(make_jpeg(tmp_path / "c.jpg", (6, 6, 6)))])
+    assert call("nm_status", project_id=pid)["project"]["step"] is None  # generated plan was dropped
+    assert ctx.hooks["pre_tool_call"](tool_name="nm_solve", args={"project_id": pid})["action"] == "block"
+
+
+def test_product_name_blocks(plugin, tmp_path):
+    ctx, call = plugin
+    ctx.llm.responses = [{"brand": "X", "product_name": "Sniglar crib", "article_numbers": [],
+                          "category_guess": "other", "confidence": 0.3, "search_queries": []}]
+    pid = call("nm_start_project", category="other")["project_id"]
+    r = call("nm_identify", project_id=pid, image_paths=[str(make_jpeg(tmp_path / "a.jpg"))])
+    assert r["safety_status"] == "blocked_child_or_load"
+
+
+@pytest.mark.parametrize("title,blocked", [("toddler bed", True), ("kids bunk", True), ("bedside table", False),
+                                           ("hall closet", False), ("sofa bed", True), ("workbench shelf", False)])
+def test_title_keywords_fail_closed(plugin, title, blocked):
+    _, call = plugin
+    r = call("nm_start_project", category="other", title=title)
+    assert (r["safety_status"] != "ok") == blocked
+
+
+def test_missing_solver_image_rerenders_line_art(bookcase):
+    from PIL import Image
+    ctx, call, pid, fx = bookcase
+    call("nm_extract_parts", project_id=pid)
+    call("nm_solve", project_id=pid)
+    out = call("nm_render_steps", project_id=pid)
+    Path(out["step_images"][5]).unlink()
+    img = call("nm_get_step", project_id=pid, index=6)["image_path"]
+    with Image.open(img) as im:  # line art is mostly white; a "(no photo)" box would be grey
+        assert im.getpixel((540, 700)) == (255, 255, 255)
+
+
+def test_done_state_and_no_backwards(bookcase, tmp_path):
+    ctx, call, pid, fx = bookcase
+    call("nm_extract_parts", project_id=pid)
+    call("nm_solve", project_id=pid)
+    total = call("nm_get_step", project_id=pid)["total"]
+    good = {"matches": True, "issues": [], "photo_quality": "good", "confidence": 0.9}
+    ctx.llm.responses = [good] * (total + 1)
+    for i in range(1, total + 1):
+        assert call("nm_check_step", project_id=pid, index=i,
+                    image_paths=[str(make_jpeg(tmp_path / f"s{i}.jpg", (i, i, i)))])["advance"]
+    assert call("nm_get_step", project_id=pid)["done"] is True
+    call("nm_check_step", project_id=pid, index=2, image_paths=[str(make_jpeg(tmp_path / "again.jpg", (99, 1, 1)))])
+    assert call("nm_status", project_id=pid)["project"]["step"] == f"{total}/{total}"
+
+
+def test_check_without_quality_verdict_does_not_advance(bookcase, tmp_path):
+    ctx, call, pid, fx = bookcase
+    call("nm_extract_parts", project_id=pid)
+    call("nm_solve", project_id=pid)
+    ctx.llm.responses = [{"matches": True, "issues": [], "confidence": 0.9}]
+    assert not call("nm_check_step", project_id=pid, image_paths=[str(make_jpeg(tmp_path / "q.jpg"))])["advance"]

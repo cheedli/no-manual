@@ -47,10 +47,28 @@ def test_ambiguous_asks():
 
 def test_confirmation_raises_confidence():
     fx = load("ambiguous")
+    sides, boards, back = fx["parts"]
+    fx["parts"] = [{**sides, "confirmed": True}, {**back, "confirmed": True},
+                   {**boards, "id": "P2", "quantity": 2, "confirmed": True},
+                   {**boards, "id": "P4", "quantity": 1, "role": "top", "confirmed": True},
+                   {**boards, "id": "P5", "quantity": 1, "role": "bottom", "confirmed": True}]
+    fx["hardware"] = [{"kind": "shelf_pin", "count": 8}, {"kind": "wall_anchor", "count": 1}]
+    plan = run(fx)
+    assert plan["confidence"] >= 0.75 and plan["roles"]["P4"] == "top" and plan["roles"]["P2"] == "shelf_loose"
+
+
+def test_confirm_all_alone_does_not_resolve_ambiguity():
+    fx = load("ambiguous")
     for p in fx["parts"]:
         p["confirmed"] = True
-    fx["hardware"] = [{"kind": "shelf_pin", "count": 8}, {"kind": "wall_anchor", "count": 1}]
-    assert run(fx)["confidence"] >= 0.75
+    assert run(fx)["confidence"] < 0.6
+
+
+def test_unknown_part_flags_first_step():
+    fx = load("bookcase_80x180")
+    fx["parts"].append({"id": "P9", "dims_mm": {"length": 400, "width": 120, "thickness": 16}})
+    s1 = run(fx)["steps"][0]
+    assert s1["confidence"] == 0.4 and "P9" in s1["instruction"]
 
 
 def test_anti_tip_and_two_people():

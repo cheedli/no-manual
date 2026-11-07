@@ -68,9 +68,10 @@ def solve(parts: list[dict], hardware: list[dict], outer: dict, category: str = 
         joined = [p for p in caps if edge_joinery(p)]
         loose = [p for p in caps if not edge_joinery(p)]
         joined.sort(key=lambda p: ab(p)[1], reverse=True)  # deepest joined boards = top/bottom
-        if len(joined) < 2 and caps:
+        have_tb = sum(1 for p in inst if p.get("role") in ("top", "bottom"))  # user-confirmed already
+        if len(joined) + have_tb < 2 and caps:
             ambiguous_tb = True
-            need = 2 - len(joined)
+            need = 2 - len(joined) - have_tb
             joined, loose = joined + loose[:need], loose[need:]
         tb, fixed = joined[:2], joined[2:]
     else:
@@ -143,6 +144,7 @@ def solve(parts: list[dict], hardware: list[dict], outer: dict, category: str = 
             questions.append(f"What is {p['id']} ({_cm(a)} × {_cm(b)} cm)? A side, shelf, top/bottom, back, door, "
                              "or something else?")
     if ambiguous_tb:
+        conf = min(conf, 0.55)  # top/bottom were guessed from boards without joinery: ask first
         ids = ", ".join(p["id"] for p in caps)
         questions.append(f"Which of {ids} have holes on their short ends (for cam locks or dowels)? "
                          "Those are the top and bottom.")
@@ -256,8 +258,12 @@ def _build(template, inst, roles, part_conf, hardware, check, W, H, D, t, catego
 
     inv = ", ".join(f"{p['id']} {ROLE_NAMES.get(roles[p['id']], roles[p['id']])}" for p in inst)
     hw_inv = ", ".join(f"{h['count']} × {h['kind'].replace('_', ' ')}" for h in hardware if h.get("count")) or "none listed"
-    add("Sort the parts and hardware", f"Lay out every panel and label it: {inv}. Hardware: {hw_inv}.",
+    unknown = [p for p in inst if roles[p["id"]] == "unknown"]
+    add("Sort the parts and hardware", f"Lay out every panel and label it: {inv}. Hardware: {hw_inv}." +
+        (f" Set aside {_names(unknown)}: I don't know where it goes yet; tell me what it is." if unknown else ""),
         checks=["all panels and hardware counted"])
+    if unknown:
+        steps[-1]["confidence"] = 0.4
 
     prep = [{"kind": "cam_bolt", "count": bolts}, {"kind": "dowel", "count": dowels}]
     if bolts or dowels:

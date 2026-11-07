@@ -18,7 +18,7 @@ def inject_hint(user_message=None, **kwargs):
 
 def safety_guard(tool_name=None, args=None, **kwargs):
     """Second enforcement layer (handlers check too). Fails closed on a blocked project."""
-    if tool_name not in safety.GENERATING_TOOLS:
+    if tool_name not in safety.GENERATING_TOOLS and tool_name not in safety.STEP_TOOLS:
         return None
     try:
         pid = (args or {}).get("project_id")
@@ -26,6 +26,7 @@ def safety_guard(tool_name=None, args=None, **kwargs):
     except Exception as e:
         log.warning("safety_guard could not load project: %s", e)
         return None  # the handler re-checks and refuses on its own
-    if p and p.blocked:
+    if p and p.blocked and (tool_name in safety.GENERATING_TOOLS
+                            or (p.plan or {}).get("source") not in (None, "manual")):
         return {"action": "block", "message": safety.BLOCK_MESSAGE}
     return None

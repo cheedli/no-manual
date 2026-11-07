@@ -97,3 +97,14 @@ def test_identify_tool(plugin, tmp_path):
     r2 = call("nm_identify", project_id=pid2, image_paths=[str(make_jpeg(tmp_path / "c.jpg", (5, 5, 5)))])
     assert r2["safety_status"] == "blocked_child_or_load" and r2["safety_note"]
     assert "official manual" in r2["next"]
+
+
+def test_redirect_to_private_host_is_refused(monkeypatch):
+    import urllib.request
+    hosts = {"public.example": "93.184.216.34", "internal.example": "10.0.0.5", "cgnat.example": "100.64.1.1"}
+    monkeypatch.setattr(socket, "getaddrinfo", lambda h, *a, **k: [(2, 1, 6, "", (hosts[h], 443))])
+    h = manual._CheckedRedirect()
+    req = urllib.request.Request("https://public.example/m.pdf")
+    for target in ("https://internal.example/m.pdf", "https://cgnat.example/m.pdf", "http://public.example/m.pdf"):
+        with pytest.raises(manual.ManualError):
+            h.redirect_request(req, None, 302, "Found", {}, target)

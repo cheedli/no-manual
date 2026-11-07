@@ -67,8 +67,17 @@ def _paths(args, p: Project) -> list[str]:
     return paths
 
 
+def _num(x, default: float = 0.0) -> float:
+    """Model output can say 0.8, "0.8" or "high": never let parsing lose the user's data."""
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return default
+
+
 def _guard(p: Project, tool: str):
-    if p.blocked and tool in safety.GENERATING_TOOLS:
+    if p.blocked and (tool in safety.GENERATING_TOOLS or
+                      (tool in safety.STEP_TOOLS and (p.plan or {}).get("source") not in (None, "manual"))):
         raise ToolError(safety.BLOCK_MESSAGE,
                         "Offer to find the official manual (nm_identify + web_search), or suggest "
                         "contacting the manufacturer or a professional.")
@@ -80,9 +89,8 @@ def nm_start_project(ctx, args, **kw):
     category = safety.normalize_category(args.get("category"))
     p = Project(category=category, title=(args.get("title") or category.replace("_", " ")).strip(),
                 assembled=args.get("state") or "unknown")
-    if safety.is_blocked(category):
-        p.safety_status, p.state = safety.BLOCKED_STATUS, "blocked"
-        p.safety_reason = f"Category: {category.replace('_', ' ')}."
+    if safety.is_blocked(category) or safety.mentions_blocked(args.get("category"), args.get("title")):
+        safety.block(p, f"Category: {category.replace('_', ' ') if safety.is_blocked(category) else p.title}.")
     get_store().save(p)
     if p.blocked:
         nxt = (f"Tell the user kindly: {safety.BLOCK_MESSAGE} Then ask for a photo of any label, "
@@ -176,7 +184,7 @@ def nm_record_stage(ctx, args, **kw):
                      "description": stage["user_text"], "assembly_instruction": "",
                      "orientation_notes": [], "confidence": 0.5}
 
-    if safety.apply_vision_guess(p, described.get("category_guess"), float(described.get("confidence") or 0)):
+    if safety.apply_vision_guess(p, described.get("category_guess"), _num(described.get("confidence"), 0.5)):
         p.state = "blocked"
         get_store().save(p)
         raise ToolError(f"{p.safety_reason} {safety.BLOCK_MESSAGE}",
@@ -200,6 +208,10 @@ def nm_record_stage(ctx, args, **kw):
 
 
 def _render_plan_images(p: Project) -> list[str]:
+    if (p.plan or {}).get("source") == "solver":
+        return _render_solver(p)["step_images"]
+    if (p.plan or {}).get("source") == "manual":  # pages are their own images
+        return [s["image_path"] for s in p.plan["steps"]]
     d = get_store().project_dir(p.id) / "steps"
     steps = p.plan["steps"]
     out = []
@@ -237,10 +249,14 @@ def nm_finish_recording(ctx, args, **kw):
 
 def nm_get_step(ctx, args, **kw):
     p = _load(args)
+    _guard(p, "nm_get_step")
     if not p.plan or not p.plan.get("steps"):
         raise ToolError("This project has no steps yet.", "Finish recording, attach a manual, or solve first.")
     steps = p.plan["steps"]
-    idx = int(args.get("index") or p.current_step or 1)
+    if not args.get("index") and p.current_step > len(steps):
+        return _ok(project_id=p.id, done=True, total=len(steps),
+                   next="All steps are done. Congratulate the user; offer to show any step again by number.")
+    idx = int(_num(args.get("index"), 0) or p.current_step or 1)
     if not 1 <= idx <= len(steps):
         raise ToolError(f"Step {idx} doesn't exist; there are {len(steps)} steps.", "Use a number in range.")
     s = steps[idx - 1]
@@ -280,11 +296,12 @@ def nm_identify(ctx, args, **kw):
         raise ToolError("Couldn't read the photos.", "Ask for a closer, well-lit photo of the label.")
     p.identity = ident
     p.state = "identifying" if not p.blocked else p.state
-    newly_blocked = safety.apply_vision_guess(p, ident.get("category_guess"), float(ident.get("confidence") or 0))
-    if newly_blocked:
-        p.state = "blocked"
+    newly_blocked = safety.apply_vision_guess(p, ident.get("category_guess"), _num(ident.get("confidence")))
+    if not p.blocked and safety.mentions_blocked(ident.get("product_name"), ident.get("category_guess")):
+        safety.block(p, f"Identified as: {ident.get('product_name') or ident.get('category_guess')}.")
+        newly_blocked = True
     get_store().save(p)
-    conf = float(ident.get("confidence") or 0)
+    conf = _num(ident.get("confidence"))
     found_something = bool(ident.get("brand") or ident.get("article_numbers") or ident.get("product_name"))
     nxt = ("Run web_search with search_queries. Prefer the manufacturer's own site or its official "
            "assembly-instructions page; look for a direct https link to the PDF. When you find it, call "
@@ -429,6 +446,9 @@ def nm_extract_parts(ctx, args, **kw):
                     "and counts with nm_confirm_parts). Then call nm_solve.")
 
 
+SINGLE_ROLES = {"top", "bottom", "plinth", "divider"}
+
+
 def nm_confirm_parts(ctx, args, **kw):
     from .core.geometry import ROLES
     p = _load(args)
@@ -439,6 +459,23 @@ def nm_confirm_parts(ctx, args, **kw):
         if not pid:
             continue
         x = byid.get(pid)
+        role_req = (u.get("role") or "").strip().lower().replace(" ", "_")
+        base_id = pid.split(".")[0]
+        # "P2.2" (an instance of P2 x3), or a one-of-a-kind role on a multi-quantity part:
+        # split one board off as its own part so ids stay unique and roles don't apply to all copies.
+        if (x is None and "." in pid and base_id in byid) or (
+                x is not None and x.get("quantity", 1) > 1 and role_req in SINGLE_ROLES and not u.get("quantity")):
+            base = byid[base_id]
+            if base.get("quantity", 1) > 1:
+                n = 1 + max(int(y["id"][1:]) for y in p.parts if y["id"][1:].isdigit())
+                x = {**base, "id": f"P{n}", "quantity": 1, "holes": dict(base.get("holes") or {}),
+                     "dims_mm": dict(base["dims_mm"]), "role": None}
+                base["quantity"] -= 1
+                p.parts.append(x)
+                byid[x["id"]] = x
+                changed.append(f"{pid} is now {x['id']}")
+            else:
+                x = base
         if u.get("remove"):
             if x:
                 p.parts.remove(x)
@@ -525,13 +562,24 @@ def _group_role(roles: dict, base_id: str) -> str:
 
 
 def nm_render_steps(ctx, args, **kw):
-    from .core import scene
-    from .core.geometry import ab
     p = _load(args)
     _guard(p, "nm_render_steps")
     plan = p.plan or {}
     if plan.get("source") != "solver" or not plan.get("steps"):
         raise ToolError("Nothing to render yet.", "Call nm_solve first (solver mode only).")
+    out = _render_solver(p)
+    p.state = "coaching"
+    get_store().save(p)
+    return _ok(project_id=p.id, **out,
+               next="Send the overview image first ('Here's what you have') with the hardware check in one line, "
+                    "say the disclaimer once, then send step 1 only (nm_get_step). " + MEDIA_NOTE +
+                    " On Hermes Desktop you can also send MEDIA:<scene_path> to open the 3D step viewer.")
+
+
+def _render_solver(p: Project) -> dict:
+    from .core import scene
+    from .core.geometry import ab
+    plan = p.plan
     d = get_store().project_dir(p.id) / "steps"
     plan["parts_list"] = [{"id": x["id"], "a": ab(x)[0], "b": ab(x)[1], "qty": x.get("quantity", 1),
                            "role": _group_role(plan["roles"], x["id"])} for x in p.parts]
@@ -545,20 +593,16 @@ def nm_render_steps(ctx, args, **kw):
         s["scene_path"] = str(scene_path)
         images.append(s["image_path"])
     plan["overview_image"], plan["scene_path"] = overview, str(scene_path)
-    p.state = "coaching"
-    get_store().save(p)
-    return _ok(project_id=p.id, overview_image=overview, scene_path=str(scene_path), step_images=images,
-               next="Send the overview image first ('Here's what you have') with the hardware check in one line, "
-                    "say the disclaimer once, then send step 1 only (nm_get_step). " + MEDIA_NOTE +
-                    " On Hermes Desktop you can also send MEDIA:<scene_path> to open the 3D step viewer.")
+    return {"overview_image": overview, "scene_path": str(scene_path), "step_images": images}
 
 
 def nm_check_step(ctx, args, **kw):
     p = _load(args)
+    _guard(p, "nm_check_step")
     if not p.plan or not p.plan.get("steps"):
         raise ToolError("This project has no steps yet.", "Finish recording, attach a manual, or solve first.")
     steps = p.plan["steps"]
-    idx = int(args.get("index") or p.current_step or 1)
+    idx = int(_num(args.get("index"), 0) or min(p.current_step, len(steps)) or 1)
     if not 1 <= idx <= len(steps):
         raise ToolError(f"Step {idx} doesn't exist.", f"Use 1-{len(steps)}.")
     s = steps[idx - 1]
@@ -581,14 +625,14 @@ def nm_check_step(ctx, args, **kw):
         title=s["title"], instruction=s["instruction"], checks="; ".join(s.get("checks") or []) or "general fit")
     v = _structured(ctx, "no-manual.check_step", instructions, blocks, vision.CHECK_SCHEMA, "matches")
     issues = [i for i in v.get("issues") or [] if i.get("text")]
-    conf = float(v.get("confidence") or 0)
+    conf = _num(v.get("confidence"))
     stop = any(i.get("severity") == "stop" for i in issues)
-    quality = v.get("photo_quality", "good")
+    quality = v.get("photo_quality") or "unclear"  # no verdict = not checked
     ok = bool(v.get("matches")) and not stop
     advance = ok and conf >= 0.6 and quality == "good"
     s.setdefault("check_log", []).append({"at": time.time(), "ok": ok, "confidence": conf, "issues": issues})
     if advance:
-        p.current_step = idx + 1
+        p.current_step = max(p.current_step, idx + 1)
         if idx == len(steps):
             p.state = "done"
     get_store().save(p)

@@ -26,7 +26,10 @@ def build_steps(stages: list[dict], category: str, height_mm: float | None) -> l
         removal, after = stages[r], stages[r - 1]
         d = removal.get("described") or {}
         user_text = removal.get("user_text") or ""
-        conf = float(d.get("confidence", 0.7) or 0.7)
+        try:
+            conf = 0.7 if d.get("confidence") is None else float(d["confidence"])
+        except (TypeError, ValueError):
+            conf = 0.5
         steps.append({
             "index": k,
             "title": _title(d, user_text),

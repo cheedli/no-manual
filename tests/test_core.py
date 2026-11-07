@@ -139,3 +139,10 @@ def test_hint_negative(msg):
 def test_recorder_title_joins_parts():
     steps = recorder.build_steps([_stage(0), _stage(1, ["left door", "right door"])], "nightstand", 500)
     assert steps[0]["title"] == "Attach the left door and right door"
+
+
+def test_recorder_keeps_zero_confidence():
+    st = _stage(1, ["top"], conf=0)
+    assert recorder.build_steps([_stage(0), st], "nightstand", 500)[0]["confidence"] == 0
+    st["described"]["confidence"] = "high"
+    assert recorder.build_steps([_stage(0), st], "nightstand", 500)[0]["confidence"] == 0.5

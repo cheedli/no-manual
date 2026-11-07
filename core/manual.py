@@ -26,13 +26,28 @@ def check_url(url: str) -> str:
     except OSError:
         raise ManualError(f"Can't reach {u.hostname}.")
     for info in infos:
-        ip = ipaddress.ip_address(info[4][0])
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+        ip = ipaddress.ip_address(info[4][0].split("%")[0])
+        if getattr(ip, "ipv4_mapped", None):
+            ip = ip.ipv4_mapped
+        if not ip.is_global:  # private, loopback, link-local, CGNAT, reserved, multicast...
             raise ManualError("That link points to a private network address.")
     return u.hostname
 
 
-def download(url: str, dest: Path, opener=urllib.request.urlopen) -> Path:
+class _CheckedRedirect(urllib.request.HTTPRedirectHandler):
+    """Re-run check_url on every redirect hop, so a public URL can't bounce to an internal one.
+    ponytail: DNS could still change between this check and the connect (rebinding); pinning the
+    resolved IP would close that, at the cost of breaking SNI/virtual hosts."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        check_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_OPENER = urllib.request.build_opener(_CheckedRedirect)
+
+
+def download(url: str, dest: Path, opener=_OPENER.open) -> Path:
     """Fetch a PDF with a 30 MB cap. `opener` is injectable for tests."""
     check_url(url)
     req = urllib.request.Request(url, headers={"User-Agent": "no-manual-hermes-plugin/0.1",

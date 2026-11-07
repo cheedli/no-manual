@@ -146,3 +146,11 @@ def test_manifest_matches_registration(plugin):
     assert set(re.findall(r"-\s+(\w+)", block)) == set(ctx.tools)
     hooks = text.split("provides_hooks:")[1].split("config_schema:")[0]
     assert set(re.findall(r"-\s+(\w+)", hooks)) == set(ctx.hooks)
+
+
+def test_recorder_non_numeric_confidence_keeps_stage(plugin, tmp_path):
+    ctx, call = plugin
+    ctx.llm.responses = [{**STAGE, "confidence": "high"}]
+    pid = call("nm_start_project", category="wardrobe")["project_id"]
+    _record(call, pid, tmp_path, 0)
+    assert _record(call, pid, tmp_path, 1, "took off the doors")["stage_index"] == 1
