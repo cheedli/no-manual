@@ -123,7 +123,7 @@ def solve(parts: list[dict], hardware: list[dict], outer: dict, category: str = 
     if any(1.0 < perr.get(p["id"], 0) <= 2.0 and not p.get("confirmed") for p in inst):
         conf *= 0.7
     tall = needs_anti_tip(category, H)
-    check = hw.check(inst, hardware, len(by("shelf_loose")), tall)
+    check = hw.check(inst, hardware, len(by("shelf_loose")), tall, roles, template)
     conf *= 0.8 ** check["mismatches"]
     if not check["ok"]:
         warnings += [line for line in check["lines"] if "Missing" in line]

@@ -117,3 +117,17 @@ def test_dowels_counted_as_pairs():
     parts = [{"id": "A", "dims_mm": {"length": 1, "width": 1}, "holes": {"dowel_edge": 4}},
              {"id": "B", "dims_mm": {"length": 1, "width": 1}, "holes": {"dowel_face": 4}}]
     assert hardware.check(parts, [{"kind": "dowel", "count": 4}], 0, False)["ok"]
+
+
+def test_hardware_ignores_misread_housings_on_bolt_panels():
+    # Real run (messy phone photos): the sides' small end holes were read as cam housings.
+    parts = [{"id": "P1", "quantity": 1, "holes": {"cam_housing": 4, "shelf_pin": 52}},
+             {"id": "P1.2", "quantity": 1, "holes": {"cam_housing": 4, "shelf_pin": 52}}] + \
+            [{"id": f"P2.{i}", "quantity": 1, "holes": {"cam_housing": 4}} for i in (1, 2, 3)]
+    roles = {"P1": "side", "P1.2": "side", "P2.1": "bottom", "P2.2": "top", "P2.3": "shelf_fixed"}
+    hw = [{"kind": "cam_lock", "count": 13}, {"kind": "cam_bolt", "count": 10}]
+    out = hardware.check(parts, hw, 0, False, roles, "T1")
+    text = " ".join(out["lines"])
+    assert "12 cam locks; you have 13" in text
+    assert "Missing 2 × cam bolt" in text
+    assert "no matching holes" not in text

@@ -16,18 +16,27 @@ def _name(kind: str, n: int) -> str:
     return base if n == 1 else base + "s"
 
 
-def check(parts: list[dict], hardware: list[dict], loose_shelves: int, tall: bool) -> dict:
-    """parts must be expanded instances. Returns {ok, lines, mismatches}."""
+BOLT_ROLES = {"T1": {"side"}, "T3": {"side"}, "T2": {"top", "bottom"}}
+
+
+def check(parts: list[dict], hardware: list[dict], loose_shelves: int, tall: bool,
+          roles: dict | None = None, template: str | None = None) -> dict:
+    """parts must be expanded instances. Returns {ok, lines, mismatches}.
+    With roles + template, cam housings are counted only on the panels that carry them (the bolt
+    panels' small end holes are often misread as housings), and every cam lock needs one cam bolt."""
     total = {k: 0 for k in ("cam_housing", "cam_bolt", "dowel_edge", "dowel_face", "shelf_pin", "hinge_cup")}
+    bolt_roles = BOLT_ROLES.get(template or "", set()) if roles else set()
     for p in parts:
         q = max(1, int(p.get("quantity") or 1))
         for k, v in holes(p).items():
+            if k == "cam_housing" and roles and roles.get(p.get("id")) in bolt_roles:
+                continue
             if k in total:
                 total[k] += v * q
     edge, face = total["dowel_edge"], total["dowel_face"]
     need = {
         "cam_lock": total["cam_housing"],
-        "cam_bolt": total["cam_bolt"],
+        "cam_bolt": total["cam_housing"] if bolt_roles else total["cam_bolt"],
         # one dowel per pair of mating holes (edge hole ↔ face hole)
         "dowel": min(edge, face) if edge and face else max(edge, face),
         "shelf_pin": 4 * loose_shelves if loose_shelves else 0,
