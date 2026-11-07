@@ -395,7 +395,7 @@ def nm_extract_parts(ctx, args, **kw):
     paths = _paths(args, p)
     if paths:
         ph.add_photos(p, paths, "panel", "", get_store().project_dir(p.id))
-    pics = [x for x in p.photos if x["kind"] in ("panel", "hardware", "overview")]
+    pics = [x for x in p.photos if x["kind"] in ("panel", "hardware", "overview", "label")]
     if not pics:
         raise ToolError("No panel photos in this project yet.",
                         "If the user already sent panel photos, call nm_extract_parts again on the SAME project "

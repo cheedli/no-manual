@@ -32,7 +32,7 @@ def sniff_image(head: bytes) -> str | None:
 def add_photos(project, paths, kind: str, caption: str, project_dir: Path) -> dict:
     """Copy valid images into project_dir. Mutates project.photos. Returns a report."""
     known = {p["sha256"] for p in project.photos}
-    added, skipped = [], []
+    added, skipped, retagged = [], [], []
     for raw in paths:
         src = Path(str(raw)).expanduser()
         if not src.is_file():
@@ -49,7 +49,13 @@ def add_photos(project, paths, kind: str, caption: str, project_dir: Path) -> di
             continue
         sha = hashlib.sha256(data).hexdigest()
         if sha in known:
-            skipped.append({"path": str(raw), "reason": "duplicate of a photo already added"})
+            prev = next(x for x in project.photos if x["sha256"] == sha)
+            if kind in ("panel", "hardware", "stage", "check") and prev["kind"] in ("label", "overview") \
+                    and kind != prev["kind"]:
+                prev["kind"] = kind  # same photo, now known to be more specific: re-tag, don't drop it
+                retagged.append(prev["id"])
+            else:
+                skipped.append({"path": str(raw), "reason": "duplicate of a photo already added"})
             continue
         pid = "ph_" + new_id()
         dest = project_dir / "photos" / f"{pid}{ext}"
@@ -62,7 +68,8 @@ def add_photos(project, paths, kind: str, caption: str, project_dir: Path) -> di
     by_kind: dict[str, int] = {}
     for p in project.photos:
         by_kind[p["kind"]] = by_kind.get(p["kind"], 0) + 1
-    return {"added": len(added), "photo_ids": added, "skipped": skipped, "total_by_kind": by_kind}
+    return {"added": len(added) + len(retagged), "photo_ids": added + retagged, "skipped": skipped,
+            "total_by_kind": by_kind}
 
 
 def recent_uploads(hermes_home: Path, since: float, limit: int = 20, window_s: float = 1800) -> list[str]:

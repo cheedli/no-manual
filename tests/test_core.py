@@ -146,3 +146,12 @@ def test_recorder_keeps_zero_confidence():
     assert recorder.build_steps([_stage(0), st], "nightstand", 500)[0]["confidence"] == 0
     st["described"]["confidence"] = "high"
     assert recorder.build_steps([_stage(0), st], "nightstand", 500)[0]["confidence"] == 0.5
+
+
+def test_duplicate_photo_is_retagged_not_dropped(tmp_path):
+    p = Project()
+    a = make_jpeg(tmp_path / "a.jpg")
+    photos.add_photos(p, [a], "label", "", tmp_path / "proj")
+    rep = photos.add_photos(p, [a], "panel", "", tmp_path / "proj")
+    assert rep["added"] == 1 and p.photos[0]["kind"] == "panel" and len(p.photos) == 1
+    assert photos.add_photos(p, [a], "panel", "", tmp_path / "proj")["added"] == 0
