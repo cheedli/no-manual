@@ -9,3 +9,4 @@ npx esbuild src/plugin.src.js --bundle --format=esm --platform=browser --target=
   --external:@hermes/plugin-sdk --external:react --external:react/jsx-runtime \
   --legal-comments=inline --outfile=plugin.js
 ls -l plugin.js
+rm -rf node_modules  # keep the plugin folder scanner-clean (validate scans the whole dir)
