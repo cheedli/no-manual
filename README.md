@@ -59,7 +59,7 @@ Mode order (ADR-002): **official manual → disassembly recorder → solver**.
 | "Help me assemble this second-hand crib" | safety | ✅ Offered the official manual only, refused to generate steps | |
 | Real flat-pack piece on Telegram | all | ⏳ To be run before submission | |
 
-Unit and contract tests: 103 passing (`pytest -q`), including all solver fixtures, golden images
+Unit and contract tests: 104 passing (`pytest -q`), including all solver fixtures, golden images
 and the safety gate. `hermes plugins validate . --install-deps` passes.
 
 ## Screenshots
