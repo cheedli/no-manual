@@ -17,8 +17,14 @@ provides_tools:
   - nm_get_step
   - nm_identify
   - nm_attach_manual
+  - nm_extract_parts
+  - nm_confirm_parts
+  - nm_solve
+  - nm_render_steps
+  - nm_check_step
 provides_hooks:
   - pre_llm_call
   - pre_tool_call
 config_schema:
+  max_photos_per_call: {type: int, default: 6, description: "Images per vision call"}
   units: {type: str, choices: [metric, imperial], default: metric, description: "Units for displayed sizes"}

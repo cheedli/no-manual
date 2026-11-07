@@ -94,3 +94,50 @@ NM_ATTACH_MANUAL = _s(
      "pdf_url": {"type": "string", "description": "Direct https URL of the PDF manual"},
      "pdf_path": {"type": "string", "description": "Local PDF path if the user sent the file"},
      "source_page": {"type": "string", "description": "Page where you found it, for attribution"}})
+
+NM_EXTRACT_PARTS = _s(
+    "nm_extract_parts",
+    "Solver mode (furniture already in pieces, no manual): read every panel and the hardware from the "
+    "photos the user sent (panels laid flat with an A4 sheet, hardware spread out). Needs the outer size "
+    "set first with nm_set_details. Pass new panel photos in image_paths.",
+    {"project_id": _PID, "image_paths": _PATHS, "recent": _RECENT})
+
+NM_CONFIRM_PARTS = _s(
+    "nm_confirm_parts",
+    "Solver mode: apply the user's answers and corrections to the parts list (roles, sizes, quantities, "
+    "missing or extra panels) and hardware counts. Call after asking the questions nm_extract_parts or "
+    "nm_solve returned.",
+    {"project_id": _PID,
+     "updates": {"type": "array", "items": {"type": "object", "properties": {
+         "part_id": {"type": "string", "description": "e.g. P3; a new id adds a panel vision missed"},
+         "role": {"type": "string", "description": "side, top, bottom, shelf_fixed, shelf_loose, back, door, "
+                                                   "plinth, divider, unknown"},
+         "quantity": {"type": "integer"},
+         "length_mm": {"type": "number"}, "width_mm": {"type": "number"}, "thickness_mm": {"type": "number"},
+         "remove": {"type": "boolean", "description": "true if this isn't a real panel"},
+         "groove": {"type": "boolean"},
+         "holes": {"type": "object", "description": "hole counts by kind, e.g. {\"cam_housing\": 4}"}},
+         "required": ["part_id"]}},
+     "hardware": {"type": "array", "items": {"type": "object", "properties": {
+         "kind": {"type": "string"}, "count": {"type": "integer"}}, "required": ["kind", "count"]},
+         "description": "Corrected hardware counts (replaces the count for that kind)"},
+     "confirm_all": {"type": "boolean", "description": "true when the user says the whole list is right"}})
+
+NM_SOLVE = _s(
+    "nm_solve",
+    "Solver mode: work out the assembly order from the confirmed parts. Returns confidence, hardware check "
+    "and questions. If it returns questions, ask them, apply with nm_confirm_parts and solve again.",
+    {"project_id": _PID})
+
+NM_RENDER_STEPS = _s(
+    "nm_render_steps",
+    "Solver mode: draw the step images (IKEA-style, from the solved geometry), the overview of all parts "
+    "and the 3D scene for Hermes Desktop. Call right after nm_solve succeeds.",
+    {"project_id": _PID})
+
+NM_CHECK_STEP = _s(
+    "nm_check_step",
+    "Check the user's photo of a finished step against the expected result before moving on. Call "
+    "whenever the user sends a photo during step-by-step coaching (any mode). Omit index for the current step.",
+    {"project_id": _PID, "index": {"type": "integer", "description": "1-based step; omit for current"},
+     "image_paths": _PATHS, "recent": _RECENT})

@@ -335,6 +335,265 @@ def nm_attach_manual(ctx, args, **kw):
                "Then call nm_get_step to send page 1. Skip cover/warning pages if the user wants. " + MEDIA_NOTE)
 
 
+# ---------------------------------------------------------------- solver mode
+
+def _structured(ctx, purpose, instructions, blocks, schema, required_key):
+    """complete_structured with one stricter retry when the JSON is missing/invalid (F5 AC2)."""
+    for attempt in range(2):
+        r = ctx.llm.complete_structured(
+            instructions=instructions if attempt == 0 else
+            instructions + " Reply with ONLY a JSON object that matches the schema exactly.",
+            input=blocks, json_schema=schema, timeout=60, purpose=purpose)
+        if r.content_type == "json" and isinstance(r.parsed, dict) and required_key in r.parsed:
+            return r.parsed
+    raise ToolError("Couldn't read the photos into a parts list.",
+                    "Ask for clearer photos (good light, panels flat, A4 sheet visible), or ask the user to "
+                    "measure each panel and pass the sizes with nm_confirm_parts.")
+
+
+def _dry_solve(p: Project) -> dict:
+    from .core import solver
+    return solver.solve(p.parts, p.hardware, p.outer_dims_mm, p.category)
+
+
+def _parts_view(p: Project, roles: dict) -> list[dict]:
+    from .core.geometry import ROLE_NAMES, holes
+    out = []
+    for x in p.parts:
+        h = {k: v for k, v in holes(x).items() if v}
+        d = x["dims_mm"]
+        out.append({"id": x["id"], "role_guess": ROLE_NAMES.get(roles.get(x["id"], "unknown"), "unknown part"),
+                    "size_cm": f"{d['length'] / 10:g} × {d['width'] / 10:g} × {d.get('thickness', 0) / 10:g}",
+                    "quantity": x.get("quantity", 1), "holes": h, "confirmed": bool(x.get("confirmed")),
+                    "confidence": x.get("confidence")})
+    return out
+
+
+def nm_extract_parts(ctx, args, **kw):
+    p = _load(args)
+    _guard(p, "nm_solve")
+    if not p.outer_dims_mm:
+        raise ToolError("I need the outer size first.", "Ask for width, height and depth of the assembled piece "
+                        "(tape measure), then call nm_set_details.")
+    paths = _paths(args, p)
+    if paths:
+        ph.add_photos(p, paths, "panel", "", get_store().project_dir(p.id))
+    pics = [x for x in p.photos if x["kind"] in ("panel", "hardware", "overview")]
+    if not pics:
+        raise ToolError("No panel photos yet.", "Ask for photos of every panel laid flat with an A4 sheet in view, "
+                                                 "and one of the hardware spread out.")
+    per_call = int(ctx.get_config("max_photos_per_call", default=6) or 6)
+    o = p.outer_dims_mm
+    dims_text = f"width {o['w']:g} mm, height {o['h']:g} mm, depth {o['d']:g} mm"
+    parts, hw_max, uncertain, guesses = [], {}, [], []
+    for i in range(0, len(pics), per_call):
+        batch = pics[i:i + per_call]
+        res = _structured(ctx, "no-manual.extract_parts", vision.PARTS_INSTRUCTIONS.format(dims=dims_text),
+                          vision.parts_input([ph.for_vision(x["path"])[0] for x in batch], dims_text),
+                          vision.PARTS_SCHEMA, "parts")
+        parts += res.get("parts") or []
+        for h in res.get("hardware") or []:
+            hw_max[h["kind"]] = max(hw_max.get(h["kind"], 0), int(h.get("count") or 0))
+        uncertain += res.get("uncertainties") or []
+        if res.get("category_guess"):
+            guesses.append(res["category_guess"])
+    if len(pics) > per_call:
+        uncertain.append("Photos were read in batches: a panel shown in two batches may be listed twice.")
+    for g in guesses:
+        if safety.apply_vision_guess(p, g, 0.6):
+            p.state = "blocked"
+            get_store().save(p)
+            raise ToolError(f"{p.safety_reason} {safety.BLOCK_MESSAGE}", "Offer to find the official manual instead.")
+    p.parts = [{"id": f"P{k}", "label": x.get("label") or "",
+                "dims_mm": {"length": float(x.get("length_mm") or 0), "width": float(x.get("width_mm") or 0),
+                            "thickness": float(x.get("thickness_mm") or 0)},
+                "quantity": max(1, int(x.get("quantity") or 1)), "holes": x.get("holes") or {},
+                "groove": bool(x.get("groove")), "description": x.get("description") or "",
+                "confidence": x.get("confidence"), "confirmed": False}
+               for k, x in enumerate(parts, 1) if x.get("length_mm") and x.get("width_mm")]
+    p.hardware = [{"kind": k, "count": n} for k, n in hw_max.items() if n]
+    p.mode, p.state = "solver", "extracting"
+    get_store().save(p)
+    if not p.parts:
+        raise ToolError("I couldn't see any panels.", "Ask for photos of the panels laid flat, one or two per photo.")
+    plan = _dry_solve(p)
+    return _ok(project_id=p.id, parts=_parts_view(p, plan["roles"]), hardware=p.hardware,
+               questions=plan["questions"][:4], uncertainties=uncertain[:4],
+               hardware_check=plan["hardware_check"]["lines"],
+               next="Show the parts list briefly (id, what it is, size). Ask the questions (max 4, one message), "
+                    "and ask the user to check the sizes and hardware counts. Apply answers with "
+                    "nm_confirm_parts, then call nm_solve." if plan["questions"] else
+                    "Show the parts list briefly and ask the user to confirm it looks right (or correct sizes "
+                    "and counts with nm_confirm_parts). Then call nm_solve.")
+
+
+def nm_confirm_parts(ctx, args, **kw):
+    from .core.geometry import ROLES
+    p = _load(args)
+    byid = {x["id"]: x for x in p.parts}
+    changed = []
+    for u in args.get("updates") or []:
+        pid = (u.get("part_id") or "").strip()
+        if not pid:
+            continue
+        x = byid.get(pid)
+        if u.get("remove"):
+            if x:
+                p.parts.remove(x)
+                changed.append(f"removed {pid}")
+            continue
+        if x is None:  # a panel vision missed
+            if not (u.get("length_mm") and u.get("width_mm")):
+                raise ToolError(f"New part {pid} needs length_mm and width_mm.", "Ask the user to measure it.")
+            x = {"id": pid, "dims_mm": {"length": 0, "width": 0, "thickness": 0}, "quantity": 1, "holes": {},
+                 "confirmed": False}
+            p.parts.append(x)
+            byid[pid] = x
+        for key, dim in (("length_mm", "length"), ("width_mm", "width"), ("thickness_mm", "thickness")):
+            if u.get(key):
+                x["dims_mm"][dim] = float(u[key])
+        if u.get("quantity"):
+            x["quantity"] = max(1, int(u["quantity"]))
+        role = (u.get("role") or "").strip().lower().replace(" ", "_")
+        role = {"shelf": "shelf_loose", "loose_shelf": "shelf_loose", "fixed_shelf": "shelf_fixed",
+                "back_panel": "back", "kick_board": "plinth"}.get(role, role)
+        if role:
+            if role not in ROLES:
+                raise ToolError(f"Unknown role '{role}'.", f"Use one of: {', '.join(ROLES)}.")
+            x["role"] = role
+        if u.get("holes"):
+            x["holes"] = {**(x.get("holes") or {}), **u["holes"]}
+        if "groove" in u:
+            x["groove"] = bool(u["groove"])
+        x["confirmed"] = True
+        changed.append(pid)
+    if args.get("confirm_all"):
+        for x in p.parts:
+            x["confirmed"] = True
+        changed.append("all parts confirmed")
+    for h in args.get("hardware") or []:
+        if h.get("kind"):
+            p.hardware = [y for y in p.hardware if y["kind"] != h["kind"]]
+            if int(h.get("count") or 0) > 0:
+                p.hardware.append({"kind": h["kind"], "count": int(h["count"])})
+            changed.append(f"{h['kind']}={h.get('count')}")
+    get_store().save(p)
+    if not p.outer_dims_mm or not p.parts:
+        return _ok(project_id=p.id, changed=changed, next="Saved. Extract parts first (nm_extract_parts).")
+    plan = _dry_solve(p)
+    return _ok(project_id=p.id, changed=changed, parts=_parts_view(p, plan["roles"]),
+               questions=plan["questions"][:4], confidence=plan["confidence"],
+               next="Ask the remaining questions, or call nm_solve." if plan["questions"] else "Call nm_solve.")
+
+
+def nm_solve(ctx, args, **kw):
+    p = _load(args)
+    _guard(p, "nm_solve")
+    if not p.outer_dims_mm or not p.parts:
+        raise ToolError("I need the outer size and the parts list first.",
+                        "Call nm_set_details (outer_dims) and nm_extract_parts.")
+    plan = _dry_solve(p)
+    out = {"confidence": plan["confidence"], "template": plan["template"],
+           "hardware_check": plan["hardware_check"], "warnings": plan["warnings"], "questions": plan["questions"]}
+    if not plan["ready"]:
+        get_store().save(p)
+        return _ok(project_id=p.id, steps=0, **out,
+                   next="Not sure enough to give steps yet. Ask these questions (one message), apply the answers "
+                        "with nm_confirm_parts, then call nm_solve again. Don't invent steps.")
+    p.plan = plan
+    p.mode, p.state, p.current_step = "solver", "solved", 1
+    low = [s["index"] for s in plan["steps"] if s["confidence"] < 0.75]
+    if low:
+        plan["warnings"].append(f"Steps {low} are less certain: check a photo after each.")
+    get_store().save(p)
+    return _ok(project_id=p.id, steps=len(plan["steps"]), uncertain_steps=low, **out,
+               disclaimer=safety.DISCLAIMER,
+               next="Call nm_render_steps, then send the overview image first." +
+                    (" Mention the hardware problems in one line." if not plan["hardware_check"]["ok"] else ""))
+
+
+def nm_render_steps(ctx, args, **kw):
+    from .core import scene
+    from .core.geometry import ab
+    p = _load(args)
+    _guard(p, "nm_render_steps")
+    plan = p.plan or {}
+    if plan.get("source") != "solver" or not plan.get("steps"):
+        raise ToolError("Nothing to render yet.", "Call nm_solve first (solver mode only).")
+    d = get_store().project_dir(p.id) / "steps"
+    plan["parts_list"] = [{"id": x["id"], "a": ab(x)[0], "b": ab(x)[1], "qty": x.get("quantity", 1),
+                           "role": plan["roles"].get(x["id"], "unknown")} for x in p.parts]
+    overview = render.overview(plan, p.hardware, d / "overview.png", plan["hardware_check"]["lines"])
+    sc = scene.build(p.id, p.outer_dims_mm, plan)
+    scene_path = d / "scene.json"
+    scene_path.write_text(json.dumps(sc))
+    images = []
+    for s in plan["steps"]:
+        s["image_path"] = render.line_art_step(plan, s, d / f"step_{s['index']:02d}.png")
+        s["scene_path"] = str(scene_path)
+        images.append(s["image_path"])
+    plan["overview_image"], plan["scene_path"] = overview, str(scene_path)
+    p.state = "coaching"
+    get_store().save(p)
+    return _ok(project_id=p.id, overview_image=overview, scene_path=str(scene_path), step_images=images,
+               next="Send the overview image first ('Here's what you have') with the hardware check in one line, "
+                    "say the disclaimer once, then send step 1 only (nm_get_step). " + MEDIA_NOTE +
+                    " On Hermes Desktop you can also send MEDIA:<scene_path> to open the 3D step viewer.")
+
+
+def nm_check_step(ctx, args, **kw):
+    p = _load(args)
+    if not p.plan or not p.plan.get("steps"):
+        raise ToolError("This project has no steps yet.", "Finish recording, attach a manual, or solve first.")
+    steps = p.plan["steps"]
+    idx = int(args.get("index") or p.current_step or 1)
+    if not 1 <= idx <= len(steps):
+        raise ToolError(f"Step {idx} doesn't exist.", f"Use 1-{len(steps)}.")
+    s = steps[idx - 1]
+    paths = _paths(args, p)
+    if not paths:
+        raise ToolError("I need a photo of the finished step.", "Ask the user to send one clear photo.")
+    rep = ph.add_photos(p, paths, "check", f"step {idx}", get_store().project_dir(p.id))
+    photo_paths = [x["path"] for x in p.photos if x["id"] in rep["photo_ids"]] or [
+        x for x in paths if Path(x).is_file()]
+    if not photo_paths:
+        raise ToolError("I couldn't open that photo.", "Ask the user to send it again.")
+    ref = s.get("image_path") or s.get("source_photo")
+    blocks = []
+    if ref and Path(ref).is_file():
+        blocks += [{"type": "text", "text": "Image 1 — REFERENCE (expected result):"},
+                   {"type": "image", "data": ph.for_vision(ref)[0], "mime_type": "image/jpeg"}]
+    blocks += [{"type": "text", "text": "User's photo(s):"}]
+    blocks += [{"type": "image", "data": ph.for_vision(x)[0], "mime_type": "image/jpeg"} for x in photo_paths[:3]]
+    instructions = vision.CHECK_INSTRUCTIONS.format(
+        title=s["title"], instruction=s["instruction"], checks="; ".join(s.get("checks") or []) or "general fit")
+    v = _structured(ctx, "no-manual.check_step", instructions, blocks, vision.CHECK_SCHEMA, "matches")
+    issues = [i for i in v.get("issues") or [] if i.get("text")]
+    conf = float(v.get("confidence") or 0)
+    stop = any(i.get("severity") == "stop" for i in issues)
+    quality = v.get("photo_quality", "good")
+    ok = bool(v.get("matches")) and not stop
+    advance = ok and conf >= 0.6 and quality == "good"
+    s.setdefault("check_log", []).append({"at": time.time(), "ok": ok, "confidence": conf, "issues": issues})
+    if advance:
+        p.current_step = idx + 1
+        if idx == len(steps):
+            p.state = "done"
+    get_store().save(p)
+    if advance:
+        nxt = ("All steps done! Congratulate the user and ask if everything feels solid." if idx == len(steps)
+               else f"Step {idx} looks right. Say so in a few words, then send step {idx + 1} (nm_get_step).")
+    elif stop:
+        nxt = "Tell the user to stop and explain the fix from the 'stop' issues in plain words. Ask for a new photo."
+    elif quality != "good" or conf < 0.6:
+        nxt = (f"Not sure from this photo ({quality}). Ask for a clearer, closer photo in good light showing the "
+               "whole step. Don't approve the step.")
+    else:
+        nxt = "Mention the issues briefly and ask the user to check them, then send a new photo."
+    return _ok(project_id=p.id, index=idx, ok=ok, advance=advance, issues=issues, confidence=conf,
+               photo_quality=quality, what_i_see=v.get("what_i_see", ""), next=nxt)
+
+
 TOOLS = [
     ("nm_start_project", schemas.NM_START_PROJECT, nm_start_project),
     ("nm_add_photos", schemas.NM_ADD_PHOTOS, nm_add_photos),
@@ -345,6 +604,11 @@ TOOLS = [
     ("nm_get_step", schemas.NM_GET_STEP, nm_get_step),
     ("nm_identify", schemas.NM_IDENTIFY, nm_identify),
     ("nm_attach_manual", schemas.NM_ATTACH_MANUAL, nm_attach_manual),
+    ("nm_extract_parts", schemas.NM_EXTRACT_PARTS, nm_extract_parts),
+    ("nm_confirm_parts", schemas.NM_CONFIRM_PARTS, nm_confirm_parts),
+    ("nm_solve", schemas.NM_SOLVE, nm_solve),
+    ("nm_render_steps", schemas.NM_RENDER_STEPS, nm_render_steps),
+    ("nm_check_step", schemas.NM_CHECK_STEP, nm_check_step),
 ]
 
 
