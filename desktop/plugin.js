@@ -27543,9 +27543,20 @@ function parseResult(result) {
   return result;
 }
 function cssVar(el, name, fallbackVar) {
-  const v = getComputedStyle(el).getPropertyValue(name).trim();
-  if (v) return v;
-  return fallbackVar ? getComputedStyle(el).getPropertyValue(fallbackVar).trim() : "";
+  const style = getComputedStyle(el);
+  const v = style.getPropertyValue(name).trim() || (fallbackVar ? style.getPropertyValue(fallbackVar).trim() : "");
+  if (!v) return "";
+  try {
+    const g = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+    g.fillStyle = getComputedStyle(document.body).backgroundColor || "#fff";
+    g.fillRect(0, 0, 1, 1);
+    g.fillStyle = v;
+    g.fillRect(0, 0, 1, 1);
+    const [r, gg, b] = g.getImageData(0, 0, 1, 1).data;
+    return `rgb(${r}, ${gg}, ${b})`;
+  } catch {
+    return v;
+  }
 }
 async function loadScene(ctx, file, scenePath) {
   if (file && /scene\.json$/.test(file.name || file.path || "")) {
@@ -27739,6 +27750,18 @@ function StepViewer(props) {
   const [idx, setIdx] = useState(0);
   const [explode, setExplode] = useState(false);
   const [fitTick, setFitTick] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => {
+    if (!playing || !scene) return void 0;
+    const t = setInterval(() => setIdx((i) => {
+      if (i >= scene.steps.length - 1) {
+        setPlaying(false);
+        return i;
+      }
+      return i + 1;
+    }), 1400);
+    return () => clearInterval(t);
+  }, [playing, scene]);
   useEffect(() => {
     if (!scenePath) return void 0;
     let live = true;
@@ -27785,6 +27808,14 @@ function StepViewer(props) {
       jsxs("div", {
         style: { display: "flex", alignItems: "center", gap: "4px" },
         children: [
+          jsx(Btn, { onClick: () => {
+            if (playing) {
+              setPlaying(false);
+              return;
+            }
+            setIdx(0);
+            setPlaying(true);
+          }, pressed: playing, children: playing ? "\u25A0 Stop" : "\u25B6 Play" }),
           jsx(Btn, { onClick: () => setIdx((i) => Math.max(0, i - 1)), disabled: idx === 0, children: "\u25C0 Prev" }),
           jsx(Btn, { onClick: () => setIdx((i) => Math.min(scene.steps.length - 1, i + 1)), disabled: idx === scene.steps.length - 1, children: "Next \u25B6" }),
           jsx(Btn, { onClick: () => setExplode((v) => !v), pressed: explode, children: explode ? "Collapse" : "Explode" }),
