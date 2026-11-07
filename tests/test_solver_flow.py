@@ -140,3 +140,18 @@ def test_golden(tmp_path, name, step):
         diff = ImageChops.difference(a.convert("L"), b.convert("L")).point(lambda v: 255 if v > 40 else 0)
         frac = (diff.histogram()[255]) / (a.width * a.height)
     assert frac < 0.02, frac
+
+
+def test_scene_path_guard(tmp_path):
+    from core.scene_guard import safe_scene_path
+    root = tmp_path / "plugin-data" / "no-manual"
+    good = root / "projects" / "ab" / "steps" / "scene.json"
+    good.parent.mkdir(parents=True)
+    good.write_text("{}")
+    (tmp_path / "secret.json").write_text("{}")
+    (root / "projects" / "ab" / "steps" / "other.json").write_text("{}")
+    assert safe_scene_path(str(good), root) == good.resolve()
+    assert safe_scene_path(str(root / "projects/ab/steps/../../../../secret.json"), root) is None
+    assert safe_scene_path(str(tmp_path / "secret.json"), root) is None
+    assert safe_scene_path(str(root / "projects/ab/steps/other.json"), root) is None
+    assert safe_scene_path("/nope/scene.json", root) is None

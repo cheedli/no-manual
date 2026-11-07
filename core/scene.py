@@ -44,3 +44,6 @@ def validate(scene: dict) -> list[str]:
         if not set(s.get("added", [])) <= {pl["id"] for pl in s.get("placed", [])}:
             errs.append(f"step {s.get('index')}: added part not placed")
     return errs
+
+
+from .scene_guard import safe_scene_path  # noqa: E402,F401  (re-export)

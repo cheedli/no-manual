@@ -1,0 +1,9 @@
+{
+  "name": "no-manual-desktop",
+  "private": true,
+  "description": "Build-time only: bundles three.js into desktop/plugin.js. Nothing here ships except plugin.js.",
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "three": "0.186.1"
+  }
+}
