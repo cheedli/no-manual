@@ -228,3 +228,19 @@ def test_check_without_quality_verdict_does_not_advance(bookcase, tmp_path):
     call("nm_solve", project_id=pid)
     ctx.llm.responses = [{"matches": True, "issues": [], "confidence": 0.9}]
     assert not call("nm_check_step", project_id=pid, image_paths=[str(make_jpeg(tmp_path / "q.jpg"))])["advance"]
+
+
+@pytest.mark.parametrize("verdict, advance", [
+    # real run: holes up, but "can't see which edge is finished" -> warn only -> advance with caution
+    ({"matches": False, "issues": [{"severity": "warn", "text": "front edge unclear"}]}, True),
+    ({"matches": False, "issues": [{"severity": "stop", "text": "upside down"},
+                                   {"severity": "warn", "text": "front edge unclear"}]}, False),
+    ({"matches": False, "issues": []}, False),
+])
+def test_only_stop_issues_block(bookcase, tmp_path, verdict, advance):
+    ctx, call, pid, fx = bookcase
+    call("nm_extract_parts", project_id=pid)
+    call("nm_solve", project_id=pid)
+    ctx.llm.responses = [dict(verdict, photo_quality="good", confidence=0.76)]
+    r = call("nm_check_step", project_id=pid, image_paths=[str(make_jpeg(tmp_path / "w.jpg"))])
+    assert r["advance"] is advance

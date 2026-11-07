@@ -636,7 +636,10 @@ def nm_check_step(ctx, args, **kw):
     conf = _num(v.get("confidence"))
     stop = any(i.get("severity") == "stop" for i in issues)
     quality = v.get("photo_quality") or "unclear"  # no verdict = not checked
-    ok = bool(v.get("matches")) and not stop
+    warns = [i for i in issues if i.get("severity") != "stop"]
+    # Only 'stop' issues block. A 'no match' that rests on warnings alone (e.g. "can't see which edge
+    # is finished") advances with a caution, otherwise a top-down phone photo could never pass.
+    ok = (bool(v.get("matches")) or bool(warns)) and not stop
     advance = ok and conf >= 0.6 and quality == "good"
     s.setdefault("check_log", []).append({"at": time.time(), "ok": ok, "confidence": conf, "issues": issues})
     if advance:
@@ -647,6 +650,8 @@ def nm_check_step(ctx, args, **kw):
     if advance:
         nxt = ("All steps done! Congratulate the user and ask if everything feels solid." if idx == len(steps)
                else f"Step {idx} looks right. Say so in a few words, then send step {idx + 1} (nm_get_step).")
+        if warns:
+            nxt += " Pass on the warnings as one short caution to keep in mind."
     elif stop:
         nxt = "Tell the user to stop and explain the fix from the 'stop' issues in plain words. Ask for a new photo."
     elif quality != "good" or conf < 0.6:
