@@ -1,32 +1,58 @@
-"""Step images (docs/07). Pillow only, no downloaded fonts, no image generation.
+"""Step images (docs/07) in the No Manual "blueprint" identity (docs/BRAND.md).
 
-Today: letterbox mode (recorder/manual: the user's own photo + header + hardware chips).
-Line-art solver mode is added on Day 3.
+Pillow only, drawn from geometry, never generated. Bundled font: Atkinson Hyperlegible (OFL,
+assets/fonts/), falling back to Pillow's default font.
+
+- letterbox_step: recorder / manual steps (the user's own photo inside a step card)
+- line_art_step: solver steps (axonometric line art of the real boards)
+- overview: "Here's what you have" (every panel to scale + hardware)
 """
 from __future__ import annotations
 
 import math
+from functools import lru_cache
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 W, H = 1080, 1350
-INK, GREY, AMBER, WHITE = (20, 20, 20), (230, 230, 230), (232, 160, 0), (255, 255, 255)
-HEADER_H, FOOTER_H, PAD = 190, 150, 40
+# ---- brand palette (docs/BRAND.md)
+PAPER = (246, 245, 241)
+CARD = (255, 255, 255)
+CARD_EDGE = (226, 223, 215)
+INK = (26, 26, 26)
+INK_SOFT = (110, 108, 102)
+BLUE = (47, 91, 255)
+BLUE_TINT = (220, 229, 255)
+SHADOW = (228, 225, 217)
+AMBER = (245, 165, 36)
+GREEN = (31, 157, 85)
+RED = (229, 72, 77)
+WHITE, GREY = CARD, (236, 234, 228)  # kept for callers/tests
+
+M = 24                      # card margin on the paper
+PAD = M + 40                # content padding inside the card
+HEADER_H, FOOTER_H = 230, 170
+FONT_DIR = Path(__file__).resolve().parents[1] / "assets" / "fonts"
 
 
-def _font(size: int):
+@lru_cache(maxsize=None)
+def _font(size: int, bold: bool = False):
+    name = "AtkinsonHyperlegible-Bold.ttf" if bold else "AtkinsonHyperlegible-Regular.ttf"
     try:
-        return ImageFont.load_default(size=size)  # Pillow >= 10.1, bundled font
-    except TypeError:
-        return ImageFont.load_default()
+        return ImageFont.truetype(str(FONT_DIR / name), size)
+    except OSError:
+        try:
+            return ImageFont.load_default(size=size)  # Pillow >= 10.1
+        except TypeError:
+            return ImageFont.load_default()
 
 
-_GLYPHS = str.maketrans({"×": "x", "•": "-", "—": "-", "–": "-", "≈": "~", "…": "...", "✓": "v", "→": "->"})
+_GLYPHS = str.maketrans({"≈": "~", "…": "...", "✓": "v", "→": "->"})
 
 
 def _t(text) -> str:
-    """The bundled Pillow font lacks a few symbols; map them to ASCII."""
+    """Map the few symbols the fonts lack to ASCII."""
     return str(text).translate(_GLYPHS)
 
 
@@ -56,48 +82,151 @@ def hardware_label(kind: str) -> str:
     return kind.replace("_", " ")
 
 
-def letterbox_step(photo_path: str | None, out_path: Path, index: int, total: int, title: str,
-                   hardware: list[dict], confidence: float = 1.0) -> str:
-    canvas = Image.new("RGB", (W, H), WHITE)
+# ================================================================== brand pieces
+
+def draw_logo(d, x, y, s=44):
+    """No Manual mark: a blue rounded square with a white hex (Allen) key."""
+    d.rounded_rectangle((x, y, x + s, y + s), radius=s * 0.26, fill=BLUE)
+    w = max(3, round(s * 0.13))
+    d.line([(x + s * 0.30, y + s * 0.24), (x + s * 0.30, y + s * 0.70), (x + s * 0.74, y + s * 0.70)],
+           fill=CARD, width=w, joint="curve")
+    r = w / 2
+    for cx, cy in ((x + s * 0.30, y + s * 0.24), (x + s * 0.74, y + s * 0.70)):
+        d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=CARD)
+
+
+def _card():
+    canvas = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(canvas)
+    d.rounded_rectangle((M + 2, M + 6, W - M + 2, H - M + 6), radius=40, fill=SHADOW)  # soft card shadow
+    d.rounded_rectangle((M, M, W - M, H - M), radius=40, fill=CARD, outline=CARD_EDGE, width=2)
+    # footer brand
+    f = _font(26, True)
+    label = "No Manual"
+    tw = d.textlength(label, font=f)
+    draw_logo(d, W - PAD - tw - 46, H - M - 66, 34)
+    _txt(d, (W - PAD - tw, H - M - 64), label, f, INK_SOFT)
+    return canvas, d
 
-    # Header: big step number (IKEA-style) + "Step k of n — title"
-    num_font, title_font, small = _font(120), _font(40), _font(30)
-    _txt(d, (PAD, 25), str(index), font=num_font, fill=INK)
-    num_w = d.textlength(str(index), font=num_font)
-    tx = PAD + num_w + 30
-    _txt(d, (tx, 40), f"Step {index} of {total}", font=small, fill=(110, 110, 110))
-    for i, line in enumerate(_wrap(d, title, title_font, W - tx - PAD)):
-        _txt(d, (tx, 85 + i * 48), line, font=title_font, fill=INK)
+
+def _pill(d, x_right, y, text, fill, fg=CARD):
+    f = _font(28, True)
+    w = d.textlength(_t(text), font=f) + 36
+    d.rounded_rectangle((x_right - w, y, x_right, y + 48), radius=24, fill=fill)
+    _txt(d, (x_right - w + 18, y + 9), text, f, fg)
+    return x_right - w - 12
+
+
+def _header(d, index, total, title, confidence, two_people=False):
+    num = str(index)
+    nf = _font(150, True)
+    _txt(d, (PAD - 6, M + 22), num, nf, INK)
+    tx = PAD + d.textlength(num, font=nf) + 28
+    _txt(d, (tx, M + 54), f"Step {index} of {total}", _font(30), INK_SOFT)
+    for i, line in enumerate(_wrap(d, title, _font(46, True), W - tx - PAD, 2)):
+        _txt(d, (tx, M + 94 + i * 54), line, _font(46, True), INK)
+    x = W - PAD
     if confidence < 0.75:
-        badge = "Check this step"
-        bw = d.textlength(badge, font=small) + 30
-        d.rounded_rectangle((W - PAD - bw, 8, W - PAD, 52), radius=12, fill=AMBER)
-        _txt(d, (W - PAD - bw + 15, 14), badge, font=small, fill=INK)
+        x = _pill(d, x, M + 30, "Check this step", AMBER, INK)
+    if two_people:
+        _pill(d, x, M + 30, "2 people", INK)
 
-    # Photo, letterboxed
-    box = (PAD, HEADER_H, W - PAD, H - FOOTER_H)
-    bw, bh = box[2] - box[0], box[3] - box[1]
-    if photo_path and Path(photo_path).is_file():
-        with Image.open(photo_path) as im:
-            im = ImageOps.exif_transpose(im).convert("RGB")
-            im.thumbnail((bw, bh))
-            canvas.paste(im, (box[0] + (bw - im.width) // 2, box[1] + (bh - im.height) // 2))
+
+# ================================================================== hardware icons + chips
+
+def _arrow(d, a, b, width=7, head=30):
+    ang = math.atan2(b[1] - a[1], b[0] - a[0])
+    base = (b[0] - head * 0.8 * math.cos(ang), b[1] - head * 0.8 * math.sin(ang))
+    d.line([a, base], fill=INK, width=width)
+    pts = [b] + [(b[0] - head * math.cos(ang + s), b[1] - head * math.sin(ang + s)) for s in (-0.45, 0.45)]
+    d.polygon(pts, fill=INK)
+
+
+def draw_icon(d, kind, x, y, s=44):
+    """Tiny vector hardware icons: cam lock, dowel, screw, pin, nail, anchor, hinge…"""
+    c = (x + s / 2, y + s / 2)
+    if kind == "cam_lock":
+        d.ellipse((x + 4, y + 4, x + s - 4, y + s - 4), fill=CARD, outline=INK, width=3)
+        d.line((c[0] - 9, c[1] + 7, c[0] + 9, c[1] - 7), fill=INK, width=4)
+    elif kind == "dowel":
+        d.rounded_rectangle((x + 4, y + s * 0.34, x + s - 4, y + s * 0.66), radius=7, fill=(239, 224, 196),
+                            outline=INK, width=3)
+    elif kind in ("wood_screw", "confirmat", "cam_bolt", "bolt", "screw"):
+        d.line((x + 12, c[1], x + s - 2, c[1]), fill=INK, width=4)
+        for k in range(3):
+            xx = x + 18 + k * 8
+            d.line((xx, c[1] - 5, xx + 4, c[1] + 5), fill=INK, width=2)
+        d.rectangle((x + 2, c[1] - 10, x + 12, c[1] + 10), fill=CARD, outline=INK, width=3)
+    elif kind == "shelf_pin":
+        d.ellipse((c[0] - 9, c[1] - 9, c[0] + 5, c[1] + 5), fill=CARD, outline=INK, width=3)
+        d.line((c[0] + 4, c[1] - 2, x + s - 4, c[1] - 2), fill=INK, width=4)
+    elif kind == "nail":
+        d.line((x + 6, c[1], x + s - 2, c[1]), fill=INK, width=2)
+        d.line((x + 6, c[1] - 8, x + 6, c[1] + 8), fill=INK, width=4)
+    elif kind in ("wall_anchor", "bracket"):
+        d.line((x + 10, y + 4, x + 10, y + s - 10, x + s - 4, y + s - 10), fill=INK, width=5, joint="curve")
+    elif kind == "hinge":
+        d.ellipse((x + 2, y + 9, x + s * 0.56, y + s - 9), fill=CARD, outline=INK, width=3)
+        d.rectangle((x + s * 0.56, c[1] - 6, x + s - 2, c[1] + 6), fill=CARD, outline=INK, width=3)
     else:
-        d.rectangle(box, fill=GREY)
-        _txt(d, (box[0] + 30, box[1] + 30), "(no photo)", font=small, fill=INK)
-    d.rectangle(box, outline=INK, width=3)
+        d.rounded_rectangle((x + 6, y + 6, x + s - 6, y + s - 6), radius=6, outline=INK, width=3)
 
-    _chips(d, hardware, H - FOOTER_H + 35)  # footer: icon + count per hardware kind
 
+def _chips(d, hardware, y):
+    """IKEA-style hardware boxes: icon + '4×'."""
+    x, f = PAD, _font(34, True)
+    for h in hardware[:6]:
+        label = f"{h.get('count', 1)}×"
+        w = 16 + 44 + 12 + d.textlength(_t(label), font=f) + 22
+        if x + w > W - PAD - 220:  # keep clear of the footer brand
+            break
+        d.rounded_rectangle((x, y, x + w, y + 72), radius=18, fill=CARD, outline=INK, width=3)
+        draw_icon(d, h.get("kind", "other"), x + 16, y + 14)
+        _txt(d, (x + 16 + 44 + 12, y + 16), label, f, INK)
+        x += w + 14
+    return x
+
+
+def _checks(d, checks, y):
+    f = _font(28)
+    for i, c in enumerate((checks or [])[:2]):
+        yy = y + i * 40
+        d.ellipse((PAD, yy + 11, PAD + 12, yy + 23), fill=BLUE)
+        _txt(d, (PAD + 24, yy), c, f, INK_SOFT)
+
+
+def _save(canvas, out_path: Path) -> str:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     canvas.save(out_path, "PNG", optimize=True)
     return str(out_path)
 
 
-# ================================================================== solver line art (docs/07 §1)
+# ================================================================== recorder / manual steps
 
-NEW_FILL, OLD_FILL, LINE_W = (226, 226, 226), (255, 255, 255), 3
+def letterbox_step(photo_path: str | None, out_path: Path, index: int, total: int, title: str,
+                   hardware: list[dict], confidence: float = 1.0) -> str:
+    canvas, d = _card()
+    _header(d, index, total, title, confidence)
+    box = (PAD, M + HEADER_H, W - PAD, H - M - FOOTER_H)
+    bw, bh = box[2] - box[0], box[3] - box[1]
+    if photo_path and Path(photo_path).is_file():
+        with Image.open(photo_path) as im:
+            im = ImageOps.exif_transpose(im).convert("RGB")
+            im.thumbnail((bw, bh))
+            px, py = box[0] + (bw - im.width) // 2, box[1] + (bh - im.height) // 2
+            mask = Image.new("L", im.size, 0)
+            ImageDraw.Draw(mask).rounded_rectangle((0, 0, im.width - 1, im.height - 1), radius=24, fill=255)
+            canvas.paste(im, (px, py), mask)
+            d.rounded_rectangle((px, py, px + im.width - 1, py + im.height - 1), radius=24, outline=CARD_EDGE, width=2)
+    else:
+        d.rounded_rectangle(box, radius=24, fill=GREY)
+        _txt(d, (box[0] + 30, box[1] + 30), "(no photo)", _font(30), INK_SOFT)
+    _chips(d, hardware, H - M - FOOTER_H + 40)
+    return _save(canvas, out_path)
+
+
+# ================================================================== solver line art
+
 _A, _B = math.radians(-35), math.radians(25)
 _R = [  # Rx(25°) · Ry(-35°)
     [math.cos(_A), 0, math.sin(_A)],
@@ -124,9 +253,9 @@ def _corners(pos, size):
     return [(x + i * sx, y + j * sy, z + k * sz) for i in (0, 1) for j in (0, 1) for k in (0, 1)]
 
 
-# faces as corner indices (i,j,k bits -> index 4i+2j+k) with outward normals
-_FACES = [((0, 1, 3, 2), (-1, 0, 0)), ((4, 6, 7, 5), (1, 0, 0)), ((0, 4, 5, 1), (0, -1, 0)),
-          ((2, 3, 7, 6), (0, 1, 0)), ((0, 2, 6, 4), (0, 0, -1)), ((1, 5, 7, 3), (0, 0, 1))]
+# faces as corner indices (i,j,k bits -> index 4i+2j+k), outward normal, light factor
+_FACES = [((0, 1, 3, 2), (-1, 0, 0), 0.90), ((4, 6, 7, 5), (1, 0, 0), 0.90), ((0, 4, 5, 1), (0, -1, 0), 0.85),
+          ((2, 3, 7, 6), (0, 1, 0), 1.00), ((0, 2, 6, 4), (0, 0, -1), 0.95), ((1, 5, 7, 3), (0, 0, 1), 0.96)]
 
 
 class _Cam:
@@ -145,83 +274,46 @@ class _Cam:
         return (self.ox + q[0] * self.s, self.oy - q[1] * self.s)
 
 
-def _draw_box(d, cam, pos, size, fill, width=LINE_W):
+def _shade(rgb, k):
+    return tuple(max(0, min(255, round(c * k))) for c in rgb)
+
+
+def _draw_box(d, cam, pos, size, fill, width=4):
     cs = _corners(pos, size)
-    for idx, n in _FACES:
+    for idx, n, light in _FACES:
         if n[0] * _EYE[0] + n[1] * _EYE[1] + n[2] * _EYE[2] <= 1e-9:
             continue  # back-facing
-        d.polygon([cam.xy(cs[i]) for i in idx], fill=fill, outline=INK, width=width)
+        d.polygon([cam.xy(cs[i]) for i in idx], fill=_shade(fill, light), outline=INK, width=width)
 
 
-def _arrow(d, a, b, width=6):
-    d.line([a, b], fill=INK, width=width)
-    ang = math.atan2(b[1] - a[1], b[0] - a[0])
-    for s in (-0.5, 0.5):
-        d.line([b, (b[0] - 26 * math.cos(ang + s), b[1] - 26 * math.sin(ang + s))], fill=INK, width=width)
-
-
-def draw_icon(d, kind, x, y, s=40):
-    """Tiny vector hardware icons (doc 07): cam lock, dowel, screw, pin, nail, anchor…"""
-    c = (x + s / 2, y + s / 2)
-    if kind == "cam_lock":
-        d.ellipse((x + 4, y + 4, x + s - 4, y + s - 4), outline=INK, width=3)
-        _arrow(d, (c[0] - 8, c[1] + 6), (c[0] + 8, c[1] - 6), width=3)
-    elif kind == "dowel":
-        d.rounded_rectangle((x + 4, y + s * 0.35, x + s - 4, y + s * 0.65), radius=6, outline=INK, width=3)
-    elif kind in ("wood_screw", "confirmat", "cam_bolt", "bolt", "screw"):
-        d.line((x + 10, c[1], x + s - 2, c[1]), fill=INK, width=4)
-        d.rectangle((x + 2, c[1] - 9, x + 10, c[1] + 9), outline=INK, width=3)
-    elif kind == "shelf_pin":
-        d.ellipse((c[0] - 7, c[1] - 7, c[0] + 7, c[1] + 7), outline=INK, width=3)
-        d.line((c[0] + 7, c[1], x + s - 4, c[1]), fill=INK, width=3)
-    elif kind == "nail":
-        d.line((x + 4, c[1], x + s - 2, c[1]), fill=INK, width=2)
-        d.line((x + 4, c[1] - 7, x + 4, c[1] + 7), fill=INK, width=3)
-    elif kind in ("wall_anchor", "bracket"):
-        d.line((x + 8, y + 4, x + 8, y + s - 8, x + s - 4, y + s - 8), fill=INK, width=4, joint="curve")
-    elif kind == "hinge":
-        d.ellipse((x + 2, y + 8, x + s * 0.55, y + s - 8), outline=INK, width=3)
-        d.rectangle((x + s * 0.55, c[1] - 5, x + s - 2, c[1] + 5), outline=INK, width=3)
-    else:
-        d.rectangle((x + 6, y + 6, x + s - 6, y + s - 6), outline=INK, width=3)
-
-
-def _chips(d, hardware, y):
-    x, f = PAD, _font(34)
-    for h in hardware[:6]:
-        label = f"×{h.get('count', 1)}"
-        w = 40 + 14 + d.textlength(_t(label), font=f) + 30
-        if x + w > W - PAD:
-            break
-        d.rounded_rectangle((x, y, x + w, y + 70), radius=35, outline=INK, width=3)
-        draw_icon(d, h.get("kind", "other"), x + 16, y + 15)
-        _txt(d, (x + 16 + 40 + 14, y + 15), label, font=f, fill=INK)
-        x += w + 16
-    return x
-
-
-def _header(d, index, total, title, confidence, two_people=False):
-    num_font, title_font, small = _font(120), _font(40), _font(30)
-    _txt(d, (PAD, 25), str(index), font=num_font, fill=INK)
-    tx = PAD + d.textlength(str(index), font=num_font) + 30
-    _txt(d, (tx, 40), f"Step {index} of {total}", font=small, fill=(110, 110, 110))
-    for i, line in enumerate(_wrap(d, title, title_font, W - tx - PAD - 40)):
-        _txt(d, (tx, 85 + i * 48), line, font=title_font, fill=INK)
-    bx = W - PAD
-    if confidence < 0.75:
-        badge = "Check this step"
-        bw = d.textlength(badge, font=small) + 30
-        d.rounded_rectangle((bx - bw, 8, bx, 52), radius=12, fill=AMBER)
-        _txt(d, (bx - bw + 15, 14), badge, font=small, fill=INK)
-    if two_people:
-        d.rounded_rectangle((bx - 150, 120, bx, 170), radius=12, outline=INK, width=3)
-        _txt(d, (bx - 135, 128), "2 people", font=small, fill=INK)
+def _ground_shadow(canvas, cam, placements):
+    """Soft ellipse under the finished footprint (y = 0)."""
+    if not placements:
+        return
+    xs = [b["pos"][0] for b in placements.values()] + [b["pos"][0] + b["size"][0] for b in placements.values()]
+    zs = [b["pos"][2] for b in placements.values()] + [b["pos"][2] + b["size"][2] for b in placements.values()]
+    pts = [cam.xy((x, 0, z)) for x in (min(xs), max(xs)) for z in (min(zs), max(zs))]
+    px, py = [p[0] for p in pts], [p[1] for p in pts]
+    cx, cy = (min(px) + max(px)) / 2, max(py) - (max(py) - min(py)) * 0.35
+    rx, ry = (max(px) - min(px)) * 0.62, max(18, (max(py) - min(py)) * 0.42)
+    layer = Image.new("L", canvas.size, 0)
+    ImageDraw.Draw(layer).ellipse((cx - rx, cy - ry, cx + rx, cy + ry), fill=255)
+    layer = layer.filter(ImageFilter.GaussianBlur(18))
+    canvas.paste(Image.new("RGB", canvas.size, SHADOW), (0, 0), layer)
 
 
 def _role_key(role, pid, placements, W_total):
     if role == "side":
         return "side_left" if placements[pid]["pos"][0] < W_total / 2 else "side_right"
     return role
+
+
+def _id_badge(d, x, y, tag):
+    f = _font(30, True)
+    tw = d.textlength(tag, font=f)
+    r = max(26, tw / 2 + 14)
+    d.ellipse((x - r, y - 26, x + r, y + 26), fill=CARD, outline=INK, width=3)
+    _txt(d, (x - tw / 2, y - 19), tag, f, INK)
 
 
 def line_art_step(plan: dict, step: dict, out_path: Path, labels: bool = True) -> str:
@@ -233,47 +325,37 @@ def line_art_step(plan: dict, step: dict, out_path: Path, labels: bool = True) -
     # camera fit includes exploded positions so arrows stay on the canvas
     fit = allbox + [{"pos": [b["pos"][i] + EXPLODE.get(_role_key(roles[k], k, placements, W_total), (0, 0, 1))[i] * mag
                              for i in range(3)], "size": b["size"]} for k, b in placements.items()]
-    cam = _Cam(fit, (PAD + 20, HEADER_H + 30, W - PAD - 20, H - FOOTER_H - 90))
+    cam = _Cam(fit, (PAD + 20, M + HEADER_H + 20, W - PAD - 20, H - M - FOOTER_H - 70))
 
-    canvas = Image.new("RGB", (W, H), WHITE)
-    d = ImageDraw.Draw(canvas)
+    canvas, d = _card()
     _header(d, step["index"], len(plan["steps"]), step["title"], step.get("confidence", 1.0), step.get("two_people"))
     placed, new = step.get("placed") or [], set(step.get("parts_added") or [])
     if not placed:
-        _overview_body(d, plan, (PAD, HEADER_H + 10, W - PAD, H - FOOTER_H - 20))
+        _overview_body(d, plan, (PAD, M + HEADER_H, W - PAD, H - M - FOOTER_H - 70))
     else:
+        _ground_shadow(canvas, cam, {k: placements[k] for k in placed})
+        d = ImageDraw.Draw(canvas)
         order = sorted(placed, key=lambda k: _proj([placements[k]["pos"][i] + placements[k]["size"][i] / 2
                                                     for i in range(3)])[2])
         for k in order:
             b = placements[k]
-            _draw_box(d, cam, b["pos"], b["size"], NEW_FILL if k in new else OLD_FILL)
-        f = _font(30)
+            _draw_box(d, cam, b["pos"], b["size"], BLUE_TINT if k in new else CARD)
         for k in new:
             b = placements[k]
             c = [b["pos"][i] + b["size"][i] / 2 for i in range(3)]
             ex = EXPLODE.get(_role_key(roles[k], k, placements, W_total), (0, 0, 1))
-            start = cam.xy([c[i] + ex[i] * mag for i in range(3)])
-            end = cam.xy([c[i] + ex[i] * mag * 0.25 for i in range(3)])
-            _arrow(d, start, end)
+            _arrow(d, cam.xy([c[i] + ex[i] * mag for i in range(3)]), cam.xy([c[i] + ex[i] * mag * 0.22 for i in range(3)]))
             if labels:
-                tx, ty = cam.xy(c)
-                tag = k.split(".")[0]
-                tw = d.textlength(tag, font=f)
-                d.rounded_rectangle((tx - tw / 2 - 10, ty - 22, tx + tw / 2 + 10, ty + 22), radius=10,
-                                    fill=WHITE, outline=INK, width=2)
-                _txt(d, (tx - tw / 2, ty - 17), tag, font=f, fill=INK)
-    # orientation hints from checks[]
-    f = _font(28)
-    for i, c in enumerate((step.get("checks") or [])[:2]):
-        _txt(d, (PAD, H - FOOTER_H - 80 + i * 36), f"• {c}", font=f, fill=(60, 60, 60))
-    _chips(d, step.get("hardware_used") or [], H - FOOTER_H + 35)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    canvas.save(out_path, "PNG", optimize=True)
-    return str(out_path)
+                _id_badge(d, *cam.xy(c), k.split(".")[0])
+    _checks(d, step.get("checks"), H - M - FOOTER_H - 60)
+    _chips(d, step.get("hardware_used") or [], H - M - FOOTER_H + 40)
+    return _save(canvas, out_path)
 
+
+# ================================================================== overview
 
 def _overview_body(d, plan, box):
-    """Every distinct panel drawn flat to scale with its label, size and count."""
+    """Every distinct panel drawn flat to one scale with its id, role, size and count."""
     from .geometry import ROLE_NAMES
     parts = plan.get("parts_list") or []
     x0, y0, x1, y1 = box
@@ -283,28 +365,29 @@ def _overview_body(d, plan, box):
     cw = (x1 - x0) / cols
     rows = math.ceil(len(parts) / cols)
     rh = (y1 - y0) / rows
-    s = min((cw - 40) / max(p["b"] for p in parts), (rh - 100) / max(p["a"] for p in parts))  # one scale for all
-    f, fs = _font(30), _font(24)
+    s = min((cw - 50) / max(p["b"] for p in parts), (rh - 110) / max(p["a"] for p in parts))  # one scale for all
+    fs = _font(24)
     for i, p in enumerate(parts):
         cx, cy = x0 + (i % cols) * cw, y0 + (i // cols) * rh
-        lw, lh = max(6, p["b"] * s), max(6, p["a"] * s)  # stand boards up: long side vertical
+        lw, lh = max(8, p["b"] * s), max(8, p["a"] * s)  # stand boards up: long side vertical
         rx = cx + (cw - lw) / 2
-        d.rectangle((rx, cy + 10, rx + lw, cy + 10 + lh), fill=OLD_FILL, outline=INK, width=3)
-        label = f"{p['id']}" + (f" ×{p['qty']}" if p["qty"] > 1 else "")
-        _txt(d, (cx + 10, cy + lh + 18), label, font=f, fill=INK)
-        _txt(d, (cx + 10, cy + lh + 52), f"{ROLE_NAMES.get(p['role'], p['role'])} · {p['a'] / 10:g}×{p['b'] / 10:g} cm",
-               font=fs, fill=(90, 90, 90))
+        d.rectangle((rx + 6, cy + 16, rx + lw + 6, cy + 16 + lh), fill=SHADOW)
+        d.rectangle((rx, cy + 10, rx + lw, cy + 10 + lh), fill=CARD, outline=INK, width=3)
+        if lh > 90 and lw > 80:  # only where the badge fits inside the board
+            _id_badge(d, rx + lw / 2, cy + 10 + lh / 2, p["id"])
+        label = p["id"] + (f"  {p['qty']}×" if p["qty"] > 1 else "")
+        _txt(d, (cx + 10, cy + lh + 24), label, _font(30, True), INK)
+        _txt(d, (cx + 10, cy + lh + 60), ROLE_NAMES.get(p["role"], p["role"]), fs, INK_SOFT)
+        _txt(d, (cx + 10, cy + lh + 88), f"{p['a'] / 10:g} × {p['b'] / 10:g} cm", fs, INK_SOFT)
 
 
 def overview(plan: dict, hardware: list[dict], out_path: Path, hardware_lines: list[str]) -> str:
-    canvas = Image.new("RGB", (W, H), WHITE)
-    d = ImageDraw.Draw(canvas)
-    _txt(d, (PAD, 40), "Here's what you have", font=_font(56), fill=INK)
+    canvas, d = _card()
+    _txt(d, (PAD, M + 44), "Here's what you have", _font(62, True), INK)
     ok = all("Missing" not in line for line in hardware_lines)
-    _txt(d, (PAD, 115), "Hardware complete" if ok else "Hardware: something is missing", font=_font(32),
-           fill=(30, 120, 60) if ok else (190, 90, 0))
-    _overview_body(d, plan, (PAD, HEADER_H + 10, W - PAD, H - FOOTER_H - 20))
-    _chips(d, hardware, H - FOOTER_H + 35)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    canvas.save(out_path, "PNG", optimize=True)
-    return str(out_path)
+    color, msg = (GREEN, "Hardware complete") if ok else (RED, "Something is missing: see the list")
+    d.ellipse((PAD, M + 146, PAD + 18, M + 164), fill=color)
+    _txt(d, (PAD + 30, M + 136), msg, _font(32, True), color)
+    _overview_body(d, plan, (PAD, M + HEADER_H, W - PAD, H - M - FOOTER_H - 20))
+    _chips(d, hardware, H - M - FOOTER_H + 40)
+    return _save(canvas, out_path)

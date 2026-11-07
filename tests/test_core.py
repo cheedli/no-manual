@@ -120,7 +120,7 @@ def test_letterbox_render(tmp_path):
                                 [{"kind": "cam_lock", "count": 4}], 0.6)
     with Image.open(out) as im:
         assert im.size == (1080, 1350) and im.mode == "RGB"
-        assert im.getpixel((5, 5)) == (255, 255, 255)
+        assert im.getpixel((5, 5)) == render.PAPER and im.getpixel((540, 700)) != render.PAPER
 
 
 @pytest.mark.parametrize("msg", ["I lost the manual for my IKEA wardrobe", "how do I reassemble my closet",

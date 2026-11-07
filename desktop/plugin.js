@@ -12914,6 +12914,69 @@ var BoxGeometry = class _BoxGeometry extends BufferGeometry {
     return new _BoxGeometry(data.width, data.height, data.depth, data.widthSegments, data.heightSegments, data.depthSegments);
   }
 };
+var CircleGeometry = class _CircleGeometry extends BufferGeometry {
+  /**
+   * Constructs a new circle geometry.
+   *
+   * @param {number} [radius=1] - Radius of the circle.
+   * @param {number} [segments=32] - Number of segments (triangles), minimum = `3`.
+   * @param {number} [thetaStart=0] - Start angle for first segment in radians.
+   * @param {number} [thetaLength=Math.PI*2] - The central angle, often called theta,
+   * of the circular sector in radians. The default value results in a complete circle.
+   */
+  constructor(radius = 1, segments = 32, thetaStart = 0, thetaLength = Math.PI * 2) {
+    super();
+    this.type = "CircleGeometry";
+    this.parameters = {
+      radius,
+      segments,
+      thetaStart,
+      thetaLength
+    };
+    segments = Math.max(3, segments);
+    const indices = [];
+    const vertices = [];
+    const normals = [];
+    const uvs = [];
+    const vertex2 = new Vector3();
+    const uv = new Vector2();
+    vertices.push(0, 0, 0);
+    normals.push(0, 0, 1);
+    uvs.push(0.5, 0.5);
+    for (let s = 0, i = 3; s <= segments; s++, i += 3) {
+      const segment = thetaStart + s / segments * thetaLength;
+      vertex2.x = radius * Math.cos(segment);
+      vertex2.y = radius * Math.sin(segment);
+      vertices.push(vertex2.x, vertex2.y, vertex2.z);
+      normals.push(0, 0, 1);
+      uv.x = (vertices[i] / radius + 1) / 2;
+      uv.y = (vertices[i + 1] / radius + 1) / 2;
+      uvs.push(uv.x, uv.y);
+    }
+    for (let i = 1; i <= segments; i++) {
+      indices.push(i, i + 1, 0);
+    }
+    this.setIndex(indices);
+    this.setAttribute("position", new Float32BufferAttribute(vertices, 3));
+    this.setAttribute("normal", new Float32BufferAttribute(normals, 3));
+    this.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
+  }
+  copy(source) {
+    super.copy(source);
+    this.parameters = Object.assign({}, source.parameters);
+    return this;
+  }
+  /**
+   * Factory method for creating an instance of this class from the given
+   * JSON object.
+   *
+   * @param {Object} data - A JSON object representing the serialized geometry.
+   * @return {CircleGeometry} A new instance.
+   */
+  static fromJSON(data) {
+    return new _CircleGeometry(data.radius, data.segments, data.thetaStart, data.thetaLength);
+  }
+};
 var _v0 = /* @__PURE__ */ new Vector3();
 var _v1$1 = /* @__PURE__ */ new Vector3();
 var _normal = /* @__PURE__ */ new Vector3();
@@ -27506,8 +27569,8 @@ function Viewer3D({ scene, stepIdx, explode, fitTick }) {
     renderer.setClearColor(0, 0);
     el.appendChild(renderer.domElement);
     const s3 = new Scene();
-    s3.add(new AmbientLight(16777215, 0.75));
-    const sun = new DirectionalLight(16777215, 0.9);
+    s3.add(new AmbientLight(16777215, 1.7));
+    const sun = new DirectionalLight(16777215, 1.5);
     sun.position.set(1, 2, 3);
     s3.add(sun);
     const camera = new PerspectiveCamera(35, 1, 1, 1e5);
@@ -27517,11 +27580,17 @@ function Viewer3D({ scene, stepIdx, explode, fitTick }) {
     const center = new Vector3(w / 2, h / 2, d / 2);
     const lineColor = new Color(cssVar(el, "--ui-text-secondary") || "currentColor");
     const panelColor = new Color(cssVar(el, "--ui-stroke-secondary", "--ui-text-quaternary") || "gray");
-    const accent = new Color(cssVar(el, "--ui-accent") || "currentColor");
+    const accent = new Color(cssVar(el, "--ui-accent") || "currentColor").lerp(new Color(1, 1, 1), 0.5);
+    const shadowMat = new MeshBasicMaterial({ color: lineColor.clone(), transparent: true, opacity: 0.12, depthWrite: false });
+    const shadow = new Mesh(new CircleGeometry(1, 48), shadowMat);
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.scale.set(w * 0.75, d * 0.95, 1);
+    shadow.position.set(w / 2, -1, d / 2);
+    model.add(shadow);
     const meshes = {};
     for (const p of scene.parts) {
       const geo = new BoxGeometry(p.size[0], p.size[1], p.size[2]);
-      const mat = new MeshStandardMaterial({ color: panelColor.clone(), transparent: true, opacity: 0.92 });
+      const mat = new MeshStandardMaterial({ color: panelColor.clone(), roughness: 1, metalness: 0, transparent: true, opacity: 0.96 });
       const mesh = new Mesh(geo, mat);
       const edges = new LineSegments(new EdgesGeometry(geo), new LineBasicMaterial({ color: lineColor }));
       mesh.add(edges);
@@ -27594,6 +27663,8 @@ function Viewer3D({ scene, stepIdx, explode, fitTick }) {
       c.removeEventListener("pointerup", onUp);
       c.removeEventListener("pointerleave", onUp);
       c.removeEventListener("wheel", onWheel);
+      shadow.geometry.dispose();
+      shadowMat.dispose();
       for (const m of Object.values(meshes)) {
         m.mesh.geometry.dispose();
         m.mat.dispose();

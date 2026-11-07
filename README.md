@@ -1,6 +1,6 @@
 # No Manual — a Hermes Agent plugin
 
-**Furniture with no instructions? Send Hermes a few photos.**
+**Build it anyway.** Furniture with no instructions? Send Hermes a few photos.
 
 ![No Manual](assets/banner.png)
 No Manual finds the official manual, turns your disassembly photos into a manual in reverse, or
@@ -59,7 +59,7 @@ Mode order (ADR-002): **official manual → disassembly recorder → solver**.
 | "Help me assemble this second-hand crib" | safety | ✅ Offered the official manual only, refused to generate steps | |
 | Real flat-pack piece on Telegram | all | ⏳ To be run before submission | |
 
-Unit and contract tests: 87 passing (`pytest -q`), including all solver fixtures, golden images
+Unit and contract tests: 103 passing (`pytest -q`), including all solver fixtures, golden images
 and the safety gate. `hermes plugins validate . --install-deps` passes.
 
 ## Screenshots
@@ -97,6 +97,11 @@ they always match your real parts.
 Every step carries a confidence. Below 0.6 the solver asks targeted questions instead of answering;
 between 0.6 and 0.75 the step image gets an amber "Check this step" badge and the agent asks for a
 photo.
+
+## Look and feel
+Step images are cards in our own "blueprint" style: heavy ink outlines, the new part in a blueprint
+tint, circled part ids, a soft ground shadow and boxed hardware counts, set in Atkinson Hyperlegible
+(OFL, bundled in `assets/fonts/` with its license). See `docs/BRAND.md`.
 
 ## Roadmap
 AR overlay on the phone camera · drawers with runners and hinged-door tuning in the solver ·

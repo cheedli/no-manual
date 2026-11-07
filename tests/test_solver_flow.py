@@ -129,7 +129,7 @@ def test_render_size_and_speed(tmp_path):
         render.line_art_step(plan, s, tmp_path / f"{s['index']}.png")
     assert time.time() - t < 10
     with Image.open(tmp_path / "5.png") as im:
-        assert im.size == (1080, 1350) and im.getpixel((5, 600)) == (255, 255, 255)
+        assert im.size == (1080, 1350) and im.getpixel((5, 600)) == render.PAPER
 
 
 @pytest.mark.parametrize("name,step", [("bookcase_80x180", 6), ("nightstand_45x55", 4)])

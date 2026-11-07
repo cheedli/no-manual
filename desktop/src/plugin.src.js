@@ -6,8 +6,8 @@ import * as sdk from '@hermes/plugin-sdk'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { jsx, jsxs } from 'react/jsx-runtime'
 import {
-  AmbientLight, BoxGeometry, Color, DirectionalLight, EdgesGeometry, Group, LineBasicMaterial,
-  LineSegments, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene, Vector3, WebGLRenderer
+  AmbientLight, BoxGeometry, CircleGeometry, Color, DirectionalLight, EdgesGeometry, Group, LineBasicMaterial,
+  LineSegments, Mesh, MeshBasicMaterial, MeshStandardMaterial, PerspectiveCamera, Scene, Vector3, WebGLRenderer
 } from 'three'
 
 const OUR_TOOLS = ['nm_render_steps', 'nm_get_step']
@@ -52,8 +52,8 @@ function Viewer3D({ scene, stepIdx, explode, fitTick }) {
     el.appendChild(renderer.domElement)
 
     const s3 = new Scene()
-    s3.add(new AmbientLight(0xffffff, 0.75))
-    const sun = new DirectionalLight(0xffffff, 0.9)
+    s3.add(new AmbientLight(0xffffff, 1.7))
+    const sun = new DirectionalLight(0xffffff, 1.5)
     sun.position.set(1, 2, 3)
     s3.add(sun)
     const camera = new PerspectiveCamera(35, 1, 1, 100000)
@@ -64,11 +64,19 @@ function Viewer3D({ scene, stepIdx, explode, fitTick }) {
     const center = new Vector3(w / 2, h / 2, d / 2)
     const lineColor = new Color(cssVar(el, '--ui-text-secondary') || 'currentColor')
     const panelColor = new Color(cssVar(el, '--ui-stroke-secondary', '--ui-text-quaternary') || 'gray')
-    const accent = new Color(cssVar(el, '--ui-accent') || 'currentColor')
+    // new parts: a light tint of the theme accent (the blueprint look of the step cards)
+    const accent = new Color(cssVar(el, '--ui-accent') || 'currentColor').lerp(new Color(1, 1, 1), 0.5)
+    // soft ground shadow under the footprint (No Manual drawing style)
+    const shadowMat = new MeshBasicMaterial({ color: lineColor.clone(), transparent: true, opacity: 0.12, depthWrite: false })
+    const shadow = new Mesh(new CircleGeometry(1, 48), shadowMat)
+    shadow.rotation.x = -Math.PI / 2
+    shadow.scale.set(w * 0.75, d * 0.95, 1)
+    shadow.position.set(w / 2, -1, d / 2)
+    model.add(shadow)
     const meshes = {}
     for (const p of scene.parts) {
       const geo = new BoxGeometry(p.size[0], p.size[1], p.size[2])
-      const mat = new MeshStandardMaterial({ color: panelColor.clone(), transparent: true, opacity: 0.92 })
+      const mat = new MeshStandardMaterial({ color: panelColor.clone(), roughness: 1, metalness: 0, transparent: true, opacity: 0.96 })
       const mesh = new Mesh(geo, mat)
       const edges = new LineSegments(new EdgesGeometry(geo), new LineBasicMaterial({ color: lineColor }))
       mesh.add(edges)
@@ -129,6 +137,7 @@ function Viewer3D({ scene, stepIdx, explode, fitTick }) {
       c.removeEventListener('pointerup', onUp)
       c.removeEventListener('pointerleave', onUp)
       c.removeEventListener('wheel', onWheel)
+      shadow.geometry.dispose(); shadowMat.dispose()
       for (const m of Object.values(meshes)) {
         m.mesh.geometry.dispose(); m.mat.dispose(); m.edges.geometry.dispose(); m.edges.material.dispose()
       }
