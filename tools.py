@@ -514,6 +514,16 @@ def nm_solve(ctx, args, **kw):
                     (" Mention the hardware problems in one line." if not plan["hardware_check"]["ok"] else ""))
 
 
+def _group_role(roles: dict, base_id: str) -> str:
+    """Identical boards can play different roles (P2 x3 = top, bottom, fixed shelf): name them all."""
+    from .core.geometry import ROLE_NAMES
+    seen = []
+    for pid, r in roles.items():
+        if (pid == base_id or pid.startswith(base_id + ".")) and ROLE_NAMES.get(r, r) not in seen:
+            seen.append(ROLE_NAMES.get(r, r))
+    return " / ".join(seen) or "unknown part"
+
+
 def nm_render_steps(ctx, args, **kw):
     from .core import scene
     from .core.geometry import ab
@@ -524,7 +534,7 @@ def nm_render_steps(ctx, args, **kw):
         raise ToolError("Nothing to render yet.", "Call nm_solve first (solver mode only).")
     d = get_store().project_dir(p.id) / "steps"
     plan["parts_list"] = [{"id": x["id"], "a": ab(x)[0], "b": ab(x)[1], "qty": x.get("quantity", 1),
-                           "role": plan["roles"].get(x["id"], "unknown")} for x in p.parts]
+                           "role": _group_role(plan["roles"], x["id"])} for x in p.parts]
     overview = render.overview(plan, p.hardware, d / "overview.png", plan["hardware_check"]["lines"])
     sc = scene.build(p.id, p.outer_dims_mm, plan)
     scene_path = d / "scene.json"

@@ -1,6 +1,8 @@
 # No Manual — a Hermes Agent plugin
 
 **Furniture with no instructions? Send Hermes a few photos.**
+
+![No Manual](assets/banner.png)
 No Manual finds the official manual, turns your disassembly photos into a manual in reverse, or
 works out flat-pack assembly from the parts. Then it coaches you step by step and checks a photo of
 each step before you move on.
@@ -52,10 +54,18 @@ Mode order (ADR-002): **official manual → disassembly recorder → solver**.
 | Bookcase 80×180, 4 panel photos with an A4 sheet | solver | ✅ 9/9 panels, exact hardware counts, 13 steps, no questions needed | Panel pictures were to-scale drawings |
 | Step 4 photo: side panel face down | step check | ✅ "Turn P1 over so its holes face up" (stop, 0.83); approved after flipping (0.88) | Drawn photos |
 | Ambiguous pile: identical boards, no holes visible | solver | ✅ Confidence < 0.6 → asks which boards have holes on their short ends; no steps until answered | Unit fixture |
+| Closet 100×200 scene in the Desktop step viewer | 3D viewer | ✅ Steps animate in, prev/next, explode, orbit, theme colours | Verified in Chromium (WebGL) with the bundled `plugin.js`; Hermes Desktop not installed on the test machine |
+| "Continue my bookcase" in a new session | resume | ✅ Found the project, resumed at step 5 of 13 | |
+| "Help me assemble this second-hand crib" | safety | ✅ Offered the official manual only, refused to generate steps | |
 | Real flat-pack piece on Telegram | all | ⏳ To be run before submission | |
 
-Unit and contract tests: 86 passing (`pytest -q`), including all solver fixtures, golden images
+Unit and contract tests: 87 passing (`pytest -q`), including all solver fixtures, golden images
 and the safety gate. `hermes plugins validate . --install-deps` passes.
+
+## Screenshots
+| Parts overview | Solver step | Recorder step | Desktop 3D viewer |
+|---|---|---|---|
+| ![overview](assets/solver-overview.png) | ![step](assets/solver-step.png) | ![recorder](assets/recorder-step.png) | ![viewer](assets/desktop-3d-viewer.png) |
 
 ## Disclosure
 > **Disclosure** — No Manual sends the photos you add to a project to your own configured model
@@ -97,6 +107,7 @@ replacement-part finder.
 uv venv .venv && uv pip install --python .venv/bin/python 'pillow>=10.1,<14' 'pypdfium2>=4.20,<6' pytest
 .venv/bin/python -m pytest -q
 hermes plugins doctor . --ci && hermes plugins validate . --install-deps
+./scripts/build_desktop.sh      # rebuilds desktop/plugin.js from desktop/src/ (pinned three.js + esbuild)
 ```
 
 ## License

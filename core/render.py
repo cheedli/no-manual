@@ -88,17 +88,7 @@ def letterbox_step(photo_path: str | None, out_path: Path, index: int, total: in
         _txt(d, (box[0] + 30, box[1] + 30), "(no photo)", font=small, fill=INK)
     d.rectangle(box, outline=INK, width=3)
 
-    # Footer: hardware chips "×4 cam lock"
-    x, y = PAD, H - FOOTER_H + 35
-    chip_font = _font(34)
-    for h in hardware[:6]:
-        label = f"×{h.get('count', 1)} {hardware_label(h.get('kind', 'part'))}"
-        cw = d.textlength(_t(label), font=chip_font) + 40
-        if x + cw > W - PAD:
-            break
-        d.rounded_rectangle((x, y, x + cw, y + 70), radius=35, outline=INK, width=3)
-        _txt(d, (x + 20, y + 15), label, font=chip_font, fill=INK)
-        x += cw + 20
+    _chips(d, hardware, H - FOOTER_H + 35)  # footer: icon + count per hardware kind
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     canvas.save(out_path, "PNG", optimize=True)
