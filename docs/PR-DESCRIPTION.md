@@ -33,7 +33,7 @@ Adds No Manual (`plugin-catalog/no-manual.yaml`) — Hermes Agent Plugin Hackath
 - `hermes plugins validate <path> --install-deps` passes at the pinned sha on Hermes v0.23.0:
   manifest, requires_hermes, loadable (`__init__.py`, `desktop/plugin.js`), declared tools/hooks
   match, security scan safe, no core override, desktop surface stays inside the SDK.
-- 103 unit/contract tests (`pytest -q`), including solver fixtures, golden images and the safety gate.
+- 104 unit/contract tests (`pytest -q`), including solver fixtures, golden images and the safety gate.
 
 **Screenshots**
 - `assets/solver-overview.png`, `assets/solver-step.png`, `assets/recorder-step.png`,
