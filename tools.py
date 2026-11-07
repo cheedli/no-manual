@@ -380,8 +380,10 @@ def nm_extract_parts(ctx, args, **kw):
         ph.add_photos(p, paths, "panel", "", get_store().project_dir(p.id))
     pics = [x for x in p.photos if x["kind"] in ("panel", "hardware", "overview")]
     if not pics:
-        raise ToolError("No panel photos yet.", "Ask for photos of every panel laid flat with an A4 sheet in view, "
-                                                 "and one of the hardware spread out.")
+        raise ToolError("No panel photos in this project yet.",
+                        "If the user already sent panel photos, call nm_extract_parts again on the SAME project "
+                        "with their paths in image_paths (don't start a new project). Otherwise ask for photos of "
+                        "every panel laid flat with an A4 sheet in view, and one of the hardware spread out.")
     per_call = int(ctx.get_config("max_photos_per_call", default=6) or 6)
     o = p.outer_dims_mm
     dims_text = f"width {o['w']:g} mm, height {o['h']:g} mm, depth {o['d']:g} mm"

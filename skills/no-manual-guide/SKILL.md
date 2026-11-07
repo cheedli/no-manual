@@ -1,6 +1,6 @@
 ---
 name: no-manual-guide
-description: Use when someone needs to assemble or reassemble furniture without instructions — lost manual, second-hand, after a move, flat-pack pieces. Runs the No Manual flow — safety, record the disassembly, then coach step by step with photo checks.
+description: Use when someone needs to assemble or reassemble furniture without instructions — lost manual, second-hand, after a move, flat-pack pieces. Runs the No Manual flow — safety, find the official manual, record the disassembly, or solve from the parts, then coach step by step with photo checks.
 ---
 
 # No Manual — help someone build furniture without instructions
@@ -46,11 +46,31 @@ description: Use when someone needs to assemble or reassemble furniture without 
    - When everything is apart: `nm_finish_recording`.
    - If the user is moving and still has the piece assembled, offer the recorder even when a
      manual exists: their own photos match their exact piece.
-4b. **Already in pieces, no manual:** the solver isn't available yet in this version. Say so.
+4b. **Already in pieces, no manual → solver** (closets, wardrobes, bookcases, cabinets,
+   nightstands; never for blocked projects).
+   a. Ask for the outer width, height and depth of the assembled piece (tape measure, or the
+      seller's listing). Store with `nm_set_details` (`outer_dims` + unit).
+   b. Ask for photos of every panel laid flat, one or two per photo, with an A4 sheet in view, and
+      one photo of all the hardware spread out. Call `nm_extract_parts` with the paths.
+   c. Show the parts list in a few lines (id, what it is, size). Ask its `questions` in ONE message
+      (max 4). Apply the answers with `nm_confirm_parts` (roles, sizes, counts; `confirm_all` when
+      the user says the list is right).
+   d. Call `nm_solve`. If it returns `questions` and 0 steps, ask them, confirm, solve again.
+      Never write steps yourself.
+   e. Call `nm_render_steps`. Send the overview image first ("Here's what you have" + the hardware
+      check in one line), then the disclaimer once, then step 1.
+   f. Drawers with runners, chairs, beds and anything unusual are out of scope: say so and offer
+      the recorder or the manual finder instead.
 5. **Coach.** Call `nm_get_step` (no index) and send ONE step: the title, the instruction in one or
-   two sentences, the hardware (e.g. "×4 cam locks"), and the `MEDIA:` line for `image_path`.
-   Ask the user to tell you or send a photo when done, then `nm_get_step` with the next `index`.
-   If a step has confidence below 0.75, tell the user to double-check it against the photo.
+   two sentences, the hardware (e.g. "×4 cam locks"), and the image line for `image_path`.
+   - Ask the user to send a photo when the step is done. When it arrives, call `nm_check_step`
+     with the photo path.
+     - `advance: true` → one short encouraging line, then `nm_get_step` for the next step.
+     - a `stop` issue → "Stop —" + the fix in plain words; ask for a new photo. Don't move on.
+     - unclear photo → ask for a closer, well-lit photo. Never approve what wasn't checked.
+   - If the user says it's done without a photo, ask for one for steps marked "Check this step"
+     (confidence below 0.75); otherwise you may continue.
+   - On Hermes Desktop, you can also send the `scene_path` (MEDIA line) once to open the 3D viewer.
 6. **Finish.** For tall furniture the last step anchors it to the wall. Never skip it. Ask if
    everything feels solid.
 
