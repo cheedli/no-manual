@@ -641,7 +641,7 @@ def nm_check_step(ctx, args, **kw):
     # is finished") advances with a caution, otherwise a top-down phone photo could never pass.
     ok = (bool(v.get("matches")) or bool(warns)) and not stop
     advance = ok and conf >= 0.6 and quality == "good"
-    s.setdefault("check_log", []).append({"at": time.time(), "ok": ok, "confidence": conf, "issues": issues})
+    s.setdefault("check_log", []).append({"at": time.time(), "looks_right": ok, "confidence": conf, "issues": issues})
     if advance:
         p.current_step = max(p.current_step, idx + 1)
         if idx == len(steps):
@@ -659,7 +659,7 @@ def nm_check_step(ctx, args, **kw):
                "whole step. Don't approve the step.")
     else:
         nxt = "Mention the issues briefly and ask the user to check them, then send a new photo."
-    return _ok(project_id=p.id, index=idx, ok=ok, advance=advance, issues=issues, confidence=conf,
+    return _ok(project_id=p.id, index=idx, looks_right=ok, advance=advance, issues=issues, confidence=conf,
                photo_quality=quality, what_i_see=v.get("what_i_see", ""), next=nxt)
 
 
