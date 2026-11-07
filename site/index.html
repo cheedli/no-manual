@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>No Manual — build it anyway</title>
+<meta name="description" content="Furniture with no instructions? Send Hermes a few photos. No Manual finds the official manual, turns your disassembly into one, or works out the assembly, then checks a photo of each step.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%235A3820'/%3E%3Cpath d='M12 8v12.5a3.5 3.5 0 0 0 3.5 3.5H23' stroke='white' stroke-width='4' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --linen:#F5EFE6; --birch:#ECE3D4; --card:#FFFCF7; --line:#E5DACA; --line-soft:#EFE7DA;
+  --ink:#1F1711; --ink-soft:#6B5D4F; --ink-faint:#9A8C7C;
+  --walnut:#5A3820; --walnut-deep:#3E2513; --oak:#C98B45; --oak-soft:#F3E2CA; --cream:#FBF5EA;
+  --green:#2F8A4E; --red:#C9442F; --amber:#D9962B;
+  --tint:#DCE5FF;
+  --r-panel:28px; --r-card:16px;
+  --shadow:0 1px 0 rgba(62,37,19,.04),0 20px 50px -20px rgba(62,37,19,.25);
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2400' height='600'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0022 0.11' numOctaves='4' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.14 0 0 0 0 0.08 0 0 0 0 0.03 0 0 0 1.5 -0.5'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  --grain-light:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='2400' height='500'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.004 0.2' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.92 0 0 0 0 0.7 0 0 0 0 0.45 0 0 0 1.2 -0.62'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{font-family:Geist,ui-sans-serif,system-ui,sans-serif;background:var(--linen);color:var(--ink);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+.mono{font-family:"Geist Mono",ui-monospace,monospace}
+.wrap{max-width:1152px;margin:0 auto;padding:0 24px}
+h1,h2,h3{font-weight:500;letter-spacing:-.04em;line-height:1.02}
+h2{font-size:clamp(34px,4.4vw,48px)}
+.lead{color:var(--ink-soft);font-size:17px;max-width:640px;margin-top:18px}
+:focus-visible{outline:2px solid var(--oak);outline-offset:2px;border-radius:6px}
+
+/* wood surface */
+.wood{position:relative;background-color:#64402A;color:var(--cream);
+  background-image:
+    linear-gradient(rgba(255,236,210,.055) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,236,210,.055) 1px,transparent 1px),
+    var(--grain-light),var(--grain),
+    radial-gradient(120% 80% at 25% 0%,#7B5133 0%,transparent 60%),
+    linear-gradient(180deg,#6A4429,#4F311D);
+  background-size:48px 48px,48px 48px,2400px 500px,2400px 600px,auto,auto}
+.panel{margin:0 12px;border-radius:var(--r-panel);overflow:hidden}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 18px;border-radius:9px;font-weight:500;font-size:15px;white-space:nowrap;transition:transform .15s,background .15s,box-shadow .15s}
+.btn:active{transform:translateY(1px)}
+.btn-cream{background:var(--cream);color:var(--walnut-deep);box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 6px 16px -6px rgba(0,0,0,.4)}
+.btn-cream:hover{background:#fff}
+.btn-ghost{border:1px solid rgba(251,245,234,.45);color:var(--cream)}
+.btn-ghost:hover{background:rgba(251,245,234,.1)}
+.btn-wood{background:var(--walnut);color:var(--cream)}
+.btn-wood:hover{background:var(--walnut-deep)}
+.btn-line{border:1px solid var(--line);background:var(--card)}
+.btn-line:hover{border-color:#d3c4ae}
+.btn svg{width:15px;height:15px}
+
+/* nav */
+.nav{position:fixed;top:12px;left:12px;right:12px;z-index:50;border-radius:var(--r-panel) var(--r-panel) 0 0;transition:background .25s,box-shadow .25s,border-radius .25s}
+.nav .wrap{display:flex;align-items:center;height:64px;gap:28px}
+.nav.solid{background:rgba(245,239,230,.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 1px 0 var(--line);border-radius:14px}
+.logo{display:flex;align-items:center;gap:9px;font-weight:600;letter-spacing:-.02em;font-size:18px}
+.logo svg{width:28px;height:28px;flex:none}
+.nav-links{display:flex;gap:22px;font-size:14px;color:rgba(251,245,234,.75)}
+.nav-links a:hover{color:var(--cream)}
+.nav .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+.nav .btn{height:36px;font-size:14px;padding:0 14px}
+.nav:not(.solid) .logo{color:var(--cream)}
+.nav.solid .nav-links{color:var(--ink-soft)}
+.nav.solid .nav-links a:hover{color:var(--ink)}
+.nav.solid .btn-cream{background:var(--walnut);color:var(--cream);box-shadow:none}
+.nav.solid .btn-ghost{border-color:var(--line);color:var(--ink)}
+
+/* hero */
+.hero{margin-top:12px;padding:150px 0 340px;text-align:center}
+.pill{display:inline-flex;align-items:center;gap:10px;padding:4px 12px 4px 4px;border:1px solid rgba(251,245,234,.35);border-radius:99px;font-size:13px;background:rgba(62,37,19,.25)}
+.pill b{background:var(--cream);color:var(--walnut-deep);font-weight:500;padding:2px 9px;border-radius:99px}
+.hero h1{font-size:clamp(44px,7.2vw,84px);max-width:900px;margin:22px auto 0;text-wrap:balance;text-shadow:0 2px 24px rgba(30,15,5,.35)}
+.hero p.sub{max-width:540px;margin:22px auto 0;font-size:18px;color:rgba(251,245,234,.82)}
+.cta-row{display:flex;gap:12px;justify-content:center;margin-top:32px;flex-wrap:wrap}
+.hero small{display:block;margin-top:20px;font-size:13px;color:rgba(251,245,234,.6)}
+
+/* app mockup */
+.app-wrap{margin-top:-300px;position:relative;z-index:2}
+.window{background:#FAF6EF;border:1px solid var(--line);border-radius:22px;padding:8px;box-shadow:0 40px 90px -30px rgba(62,37,19,.45)}
+.chrome{display:flex;align-items:center;height:30px;padding:0 10px;position:relative}
+.dots{display:flex;gap:6px}.dots i{width:10px;height:10px;border-radius:50%;background:#DCD1C1}
+.addr{position:absolute;left:50%;transform:translateX(-50%);font-size:12px;color:var(--ink-soft);background:var(--birch);padding:3px 26px;border-radius:7px}
+.app{display:grid;grid-template-columns:280px 1fr 290px;gap:8px;height:640px}
+.pane{background:var(--card);border:1px solid var(--line-soft);border-radius:14px;display:flex;flex-direction:column;min-height:0}
+.chat{padding:14px;gap:12px;overflow:hidden}
+.chat-head{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500}
+.chat-head .spin{margin-left:auto;width:14px;height:14px;border-radius:50%;border:2px solid var(--oak-soft);border-top-color:var(--oak);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.msg{font-size:13px;line-height:1.5;color:var(--ink-soft)}
+.msg.me{align-self:flex-end;background:var(--birch);color:var(--ink);padding:10px 12px;border-radius:12px;max-width:92%}
+.thumbs{display:flex;gap:5px;margin-bottom:8px}
+.thumbs i{width:38px;height:38px;border-radius:6px;background-color:#C9A47A;background-image:var(--grain-light),var(--grain),linear-gradient(135deg,#D8B88F,#B88B5C);background-size:300px 200px,300px 200px,auto;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+.thumbs i:nth-child(2){background-color:#E9E2D6;background-image:linear-gradient(135deg,#F2EEE7,#D9D0C2)}
+.thumbs i:nth-child(3){transform:rotate(-4deg)}
+.msg b{color:var(--ink);font-weight:500}
+.chat .grow{flex:1}
+.composer{border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--ink-faint);background:var(--linen)}
+.composer div{display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:12px}
+.send{width:26px;height:26px;border-radius:50%;background:var(--walnut);display:grid;place-items:center}
+.send svg{width:13px;height:13px;stroke:var(--cream)}
+.canvas{background:transparent;border:0;align-items:center;justify-content:center;position:relative}
+.canvas img{height:500px;width:auto;border-radius:22px;box-shadow:0 30px 60px -28px rgba(62,37,19,.45)}
+.toolbar{position:absolute;bottom:8px;display:flex;gap:4px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:5px;font-size:13px;color:var(--ink-soft);box-shadow:var(--shadow)}
+.toolbar span{padding:5px 9px;border-radius:7px;display:flex;align-items:center;gap:6px}
+.toolbar .on{background:var(--birch);color:var(--ink)}
+.side{overflow:hidden}
+.side-top{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line-soft);font-size:13px;color:var(--ink-soft)}
+.side-top .btn{height:30px;font-size:13px;padding:0 12px;margin-left:auto;border-radius:8px}
+.group{padding:12px 14px;border-bottom:1px solid var(--line-soft)}
+.group h4{font-size:13px;font-weight:500;margin-bottom:9px;display:flex;justify-content:space-between}
+.group h4 span{color:var(--ink-faint);font-weight:400}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.chip{background:var(--linen);border:1px solid var(--line-soft);border-radius:8px;padding:6px 9px;font-size:12px;display:flex;justify-content:space-between}
+.chip.cur{background:var(--tint);border-color:#BFCDF7}
+.row{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:7px 10px;background:var(--linen);border-radius:8px;margin-top:5px}
+.row .mono{font-size:12px}
+.row.warn{background:#FBEFD9}
+.row.warn .mono{color:#9A6213}
+.bar{height:30px;border-radius:8px;background:var(--linen);position:relative;overflow:hidden;font-size:12.5px;display:flex;align-items:center;justify-content:space-between;padding:0 10px;margin-top:5px}
+.bar::before{content:"";position:absolute;inset:0 auto 0 0;width:var(--v);background:#E6D6BF}
+.bar>*{position:relative}
+.check{border-radius:10px;padding:10px 11px;font-size:12.5px;line-height:1.45;transition:background .4s,color .4s}
+.check strong{display:flex;align-items:center;gap:6px;font-weight:600;margin-bottom:2px}
+.check strong i{width:8px;height:8px;border-radius:50%;background:currentColor}
+.check.stop{background:#F9E1DB;color:#8E2C1C}
+.check.ok{background:#DDEFE2;color:#1E5E35}
+
+/* section scaffolding */
+section{scroll-margin-top:90px}
+.sec{padding:140px 0}
+.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
+.arrows{display:flex;gap:8px}
+.arrows button{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--card);display:grid;place-items:center}
+.arrows button:hover{border-color:#cdbda6}
+.arrows svg{width:15px;height:15px}
+
+/* examples */
+.rail{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;padding:44px max(24px,calc((100vw - 1104px)/2)) 8px;scrollbar-width:none}
+.rail::-webkit-scrollbar{display:none}
+.ex{flex:0 0 272px;scroll-snap-align:start;background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);padding:6px;display:flex;flex-direction:column}
+.ex .shot{height:200px;border-radius:11px;overflow:hidden;background:var(--birch);display:grid;place-items:center;position:relative}
+.ex .shot img{height:100%;width:100%;object-fit:cover;object-position:top}
+.ex .shot.fit img{object-fit:contain;padding:10px}
+.ex .tag{position:absolute;top:8px;left:8px;font-size:11.5px;background:var(--card);border:1px solid var(--line);padding:2px 8px;border-radius:99px}
+.ex h3{font-size:15px;font-weight:500;letter-spacing:-.01em;margin:12px 8px 4px;line-height:1.3}
+.ex p{font-size:13px;color:var(--ink-soft);margin:0 8px;flex:1;line-height:1.45}
+.ex .res{margin:14px 8px 8px;display:flex;gap:6px;flex-wrap:wrap}
+.res span{font-size:12px;padding:4px 9px;border-radius:7px;background:var(--linen);border:1px solid var(--line-soft)}
+.res .good{background:#E3F1E6;border-color:#C9E3CF;color:#1E5E35}
+.res .stop{background:#F9E1DB;border-color:#F0C9BF;color:#8E2C1C}
+.pdf{display:flex;gap:6px;transform:rotate(-3deg)}
+.pdf i{width:62px;height:84px;background:#fff;border-radius:4px;box-shadow:0 8px 20px -10px rgba(0,0,0,.35);position:relative}
+.pdf i::after{content:"";position:absolute;inset:12px 10px auto;height:34px;border:2px solid var(--ink);border-radius:2px;border-top-width:5px}
+.pdf i:nth-child(2){transform:translateY(-8px)}
+.refuse{background:var(--card);border-radius:10px;padding:12px 14px;font-size:12.5px;max-width:200px;box-shadow:var(--shadow);line-height:1.45}
+.refuse b{display:block;color:#8E2C1C;margin-bottom:3px}
+
+/* compare */
+.cmp{display:grid;grid-template-columns:1fr 1.3fr 1.3fr;gap:12px;margin-top:56px}
+.cmp-card{border-radius:var(--r-card);padding:14px;display:flex;flex-direction:column;background:var(--card);color:var(--ink)}
+.cmp-card.req{background:rgba(251,245,234,.08);border:1px solid rgba(251,245,234,.2);color:var(--cream);backdrop-filter:blur(2px)}
+.cmp-card header{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:500;margin-bottom:12px}
+.cmp-card header span{font-size:12px;font-weight:400;color:var(--ink-faint)}
+.cmp-card.req header span{color:rgba(251,245,234,.6)}
+.req .prompt{flex:1;background:rgba(251,245,234,.08);border-radius:11px;padding:14px;font-size:14px;line-height:1.55}
+.req footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:12px;color:rgba(251,245,234,.6)}
+.req .send{background:var(--cream)}.req .send svg{stroke:var(--walnut)}
+.screen{height:250px;border-radius:11px;overflow:hidden;background:#2A2520;padding:18px;display:flex;flex-direction:column;gap:7px}
+.screen i{height:7px;border-radius:4px;background:#5A524A;display:block}
+.screen.nm{background:var(--birch);padding:0;display:grid;grid-template-columns:1fr 1fr;gap:0}
+.screen.nm img{height:250px;width:100%;object-fit:cover;object-position:center 30%}
+.screen.nm .mini{padding:12px;display:flex;flex-direction:column;gap:6px;justify-content:center}
+.ticks{list-style:none;padding:0;margin-top:10px}
+.ticks li{font-size:13.5px;padding:10px 4px;border-top:1px solid var(--line-soft);display:flex;gap:9px;align-items:center}
+.ticks li:first-child{border-top:0}
+.ticks svg{width:14px;height:14px;flex:none}
+
+/* bento */
+.bento{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-top:56px}
+.b{min-width:0;background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);padding:8px;display:flex;flex-direction:column}
+.b .stage{height:250px;border-radius:11px;background:var(--birch);display:flex;align-items:center;justify-content:center;gap:14px;overflow:hidden;position:relative;padding:16px}
+.b h3{font-size:16px;font-weight:500;letter-spacing:-.01em;margin:16px 12px 6px}
+.b p{font-size:14px;color:var(--ink-soft);margin:0 12px 14px;line-height:1.55}
+.s2{grid-column:span 2}.s3{grid-column:span 3}.s4{grid-column:span 4}
+.float{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:var(--shadow);font-size:12.5px}
+.float h5{font-size:12.5px;font-weight:500;display:flex;justify-content:space-between;gap:16px;margin-bottom:8px}
+.float h5 span{color:var(--ink-faint);font-weight:400}
+.label{width:150px;height:110px;border-radius:10px;background-color:#BE9465;background-image:var(--grain-light),var(--grain),linear-gradient(135deg,#D3AE80,#A97D50);background-size:300px 200px,300px 200px,auto;display:grid;place-items:center;box-shadow:0 18px 30px -18px rgba(62,37,19,.6);transform:rotate(-4deg)}
+.label span{background:#fff;font-size:10px;padding:6px 8px;border-radius:3px;line-height:1.3;transform:rotate(2deg);box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.prog{height:5px;background:var(--line-soft);border-radius:3px;margin-top:10px;overflow:hidden}
+.prog i{display:block;height:100%;width:38%;background:var(--oak);border-radius:3px}
+.dotgrid{background-image:radial-gradient(#CDBDA6 1px,transparent 1px);background-size:16px 16px}
+.rev{display:flex;align-items:center;gap:8px}
+.rev img{width:78px;border-radius:8px;box-shadow:var(--shadow);background:#fff}
+.rev svg{width:16px;height:16px;stroke:var(--ink-faint)}
+.nolist{list-style:none;padding:0;display:grid;gap:5px}
+.nolist li{display:flex;gap:8px;align-items:center;font-size:12.5px;padding:6px 10px;background:var(--linen);border-radius:7px}
+.nolist li::before{content:"";width:10px;height:2px;background:var(--red);transform:rotate(-45deg);box-shadow:0 0 0 0 var(--red)}
+
+/* modes */
+.modes{background:var(--birch)}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:48px}
+.plan{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:26px}
+.plan.hl{background:#F6EEE2;border-color:#DCCBB1;box-shadow:0 30px 60px -36px rgba(62,37,19,.5)}
+.plan header{display:flex;justify-content:space-between;align-items:center;font-size:17px;font-weight:500}
+.badge{font-size:11.5px;font-weight:500;background:var(--walnut);color:var(--cream);padding:3px 9px;border-radius:99px}
+.plan .for{font-size:13.5px;color:var(--ink-soft);margin-top:4px}
+.plan .num{font-size:52px;font-weight:500;letter-spacing:-.05em;margin-top:22px;line-height:1}
+.plan .num small{font-size:14px;letter-spacing:0;color:var(--ink-soft);font-weight:400;margin-left:4px}
+.plan .meta{font-size:12.5px;color:var(--ink-soft);margin-top:8px}
+.plan .btn{width:100%;justify-content:center;margin-top:24px}
+.plan ul{list-style:none;padding:0;margin-top:22px;display:grid;gap:9px}
+.plan li{font-size:13.5px;color:var(--ink-soft);display:flex;gap:9px}
+.plan li:first-child{color:var(--ink);font-weight:500}
+.plan li svg{width:14px;height:14px;flex:none;margin-top:4px}
+.strip{margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 26px;display:flex;gap:24px;align-items:center;justify-content:space-between}
+.strip h4{font-size:17px;font-weight:500}
+.strip p{font-size:14px;color:var(--ink-soft);margin-top:4px;max-width:780px}
+.foot{margin-top:12px;border:1px solid var(--line);border-radius:14px;padding:14px 26px;display:flex;gap:12px 20px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:12.5px;color:var(--ink-soft)}
+.foot ul{display:flex;flex-wrap:wrap;gap:4px 18px;list-style:none;padding:0}
+.foot li::before{content:"•";margin-right:8px;color:var(--ink-faint)}
+.cmd{display:flex;align-items:center;gap:10px;background:var(--ink);color:#EADFCF;border-radius:10px;padding:8px 8px 8px 14px;font-size:13px}
+.cmd{max-width:100%}.cmd code{min-width:0;font-family:"Geist Mono",monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cmd code::before{content:"$ ";color:var(--oak)}
+.cmd button{background:rgba(255,255,255,.1);border-radius:7px;padding:5px 10px;font-size:12px;color:#EADFCF;flex:none}
+.cmd button:hover{background:rgba(255,255,255,.18)}
+
+/* faq */
+.faq{display:grid;grid-template-columns:1fr 1.75fr;gap:48px}
+.faq h2{position:sticky;top:110px;align-self:start}
+details{border-top:1px solid var(--line)}
+details:last-child{border-bottom:1px solid var(--line)}
+summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 0;font-size:17px;cursor:pointer}
+summary::-webkit-details-marker{display:none}
+summary svg{width:16px;height:16px;stroke:var(--ink-faint);transition:transform .2s;flex:none}
+details[open] summary svg{transform:rotate(45deg)}
+details p{color:var(--ink-soft);padding:0 40px 22px 0;font-size:15px}
+
+/* closing */
+.closing{padding:130px 0 140px;text-align:center}
+.closing h2{font-size:clamp(48px,8vw,104px);text-shadow:0 2px 24px rgba(30,15,5,.35)}
+.closing p{max-width:520px;margin:20px auto 0;color:rgba(251,245,234,.8);font-size:18px}
+.closing .cmd{max-width:520px;margin:34px auto 0;background:rgba(31,23,17,.55);backdrop-filter:blur(6px);border:1px solid rgba(251,245,234,.15);text-align:left}
+.closing .cmd code{flex:1}
+.cards3{display:flex;justify-content:center;margin-top:64px}
+.cards3 img{width:200px;border-radius:16px;box-shadow:0 30px 50px -20px rgba(20,10,3,.6)}
+.cards3 img:nth-child(1){transform:rotate(-7deg) translate(30px,18px)}
+.cards3 img:nth-child(2){position:relative;z-index:1}
+.cards3 img:nth-child(3){transform:rotate(7deg) translate(-30px,18px)}
+
+footer.site{padding:56px 0 40px}
+.fgrid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px}
+.fgrid .logo svg{width:30px;height:30px}
+.fgrid .tag-line{font-size:22px;letter-spacing:-.03em;margin-top:16px;font-weight:500}
+.status{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-soft);border:1px solid var(--line);border-radius:99px;padding:3px 11px;margin-top:16px}
+.status i{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px #D4EBDA}
+.fgrid h6{font-size:13px;font-weight:600;margin-bottom:12px}
+.fgrid ul{list-style:none;padding:0;display:grid;gap:8px;font-size:14px;color:var(--ink-soft)}
+.fgrid a:hover{color:var(--ink)}
+.copy{border-top:1px solid var(--line);margin-top:48px;padding-top:22px;font-size:13px;color:var(--ink-faint);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+/* reveal */
+.js .rv{opacity:0;transform:translateY(16px);transition:opacity .7s ease,transform .7s ease}
+.js .rv.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.js .rv{opacity:1;transform:none;transition:none}.chat-head .spin{animation:none}html{scroll-behavior:auto}}
+
+/* responsive */
+@media (max-width:1060px){
+  .app{grid-template-columns:1fr 280px}
+  .chat{display:none}
+  .cmp{grid-template-columns:1fr 1fr}.cmp .req{grid-column:span 2}
+}
+@media (max-width:860px){
+  .nav-links{display:none}
+  .bento{grid-template-columns:minmax(0,1fr)}.b .label{display:none}.s2,.s3,.s4{grid-column:auto}
+  .plans{grid-template-columns:1fr}
+  .faq{grid-template-columns:1fr;gap:16px}.faq h2{position:static}
+  .fgrid{grid-template-columns:1fr 1fr}.fgrid>div:first-child{grid-column:span 2}
+  .strip{flex-direction:column;align-items:flex-start}
+}
+@media (max-width:700px){
+  .wrap{padding:0 16px}
+  .panel{margin:0 6px;border-radius:20px}
+  .nav{left:6px;right:6px;top:6px}
+  .nav .btn-ghost{display:none}
+  .hero{padding:120px 0 220px}
+  .hero p.sub{font-size:16px}
+  .app-wrap{margin-top:-190px}
+  .app{grid-template-columns:1fr;height:auto}
+  .canvas{padding:12px 0 64px}
+  .canvas img{height:auto;width:100%;max-width:320px}
+  .addr{padding:3px 12px}
+  .sec{padding:96px 0}
+  .sec-head{flex-direction:column;align-items:flex-start}
+  .cmp{grid-template-columns:1fr}.cmp .req{grid-column:auto}
+  .screen.nm{grid-template-columns:1fr}.screen.nm .mini{display:none}
+  .b .stage{height:auto;min-height:220px}
+  .rail{padding-left:16px;padding-right:16px}
+  .ex{flex-basis:250px}
+  .cards3 img{width:120px}
+  .cards3 img:nth-child(1){transform:rotate(-7deg) translate(20px,12px)}
+  .cards3 img:nth-child(3){transform:rotate(7deg) translate(-20px,12px)}
+  .closing .cmd code{font-size:11.5px}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="mark" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#5A3820"/><rect x=".5" y=".5" width="31" height="31" rx="7.5" fill="none" stroke="rgba(255,240,220,.25)"/><path d="M12 8v12.5a3.5 3.5 0 0 0 3.5 3.5H23" stroke="#FBF5EA" stroke-width="4" stroke-linecap="round" fill="none"/></symbol>
+  <symbol id="arrow" viewBox="0 0 16 16"><path d="M3 8h10M9 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="tick" viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="cross" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+  <symbol id="plus" viewBox="0 0 16 16"><path d="M8 2v12M2 8h12" fill="none" stroke-width="1.4" stroke-linecap="round"/></symbol>
+  <symbol id="up" viewBox="0 0 16 16"><path d="M8 13V3M4 7l4-4 4 4" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<nav class="nav" id="nav">
+  <div class="wrap">
+    <a class="logo" href="#top"><svg><use href="#mark"/></svg>No Manual</a>
+    <div class="nav-links">
+      <a href="#examples">Examples</a><a href="#features">Features</a><a href="#modes">Modes</a><a href="#faq">FAQ</a>
+    </div>
+    <div class="right">
+      <a class="btn btn-ghost" href="../README.md">Docs</a>
+      <a class="btn btn-cream" href="#install">Install</a>
+    </div>
+  </div>
+</nav>
+
+<main id="top">
+  <header class="panel wood hero">
+    <div class="wrap">
+      <a class="pill" href="#modes"><b>Hermes plugin</b>Finds it, writes it or works it out <svg width="14" height="14"><use href="#arrow"/></svg></a>
+      <h1>The fastest way to build furniture with no manual.</h1>
+      <p class="sub">Send Hermes a few photos. It finds the official manual, turns your disassembly into one, or works out the assembly, then checks a photo of every step.</p>
+      <div class="cta-row">
+        <a class="btn btn-cream" href="#install">Install the plugin <svg><use href="#arrow"/></svg></a>
+        <a class="btn btn-ghost" href="#examples">See real builds</a>
+      </div>
+      <small>Free and open source · Runs on the model you already use</small>
+    </div>
+  </header>
+
+  <div class="wrap app-wrap rv">
+    <div class="window" role="img" aria-label="No Manual coaching a bookcase build in Hermes: chat on the left, step 6 drawing in the middle, parts, hardware and the photo check on the right">
+      <div class="chrome"><div class="dots"><i></i><i></i><i></i></div><span class="addr">hermes · no-manual</span></div>
+      <div class="app">
+        <div class="pane chat">
+          <div class="chat-head">Bookcase 80×180 <span class="spin"></span></div>
+          <div class="msg me"><div class="thumbs"><i></i><i></i><i></i><i></i></div>Lost the manual for my bookcase. 80 wide, 180 tall. These are the panels.</div>
+          <div class="msg">No official manual matched with enough confidence. I measured <b>9 panels</b> against your A4 sheet and worked out <b>13 steps</b>. Step 6: attach the top, holes facing down.</div>
+          <div class="msg me"><div class="thumbs"><i></i></div>Is this right?</div>
+          <div class="msg" id="chatReply">Stop. P1 is face down: the holes should face up. Turn it over, then send another photo.</div>
+          <div class="grow"></div>
+          <div class="composer">Send a photo of this step…<div><span>Step 6 of 13</span><span class="send"><svg><use href="#up"/></svg></span></div></div>
+        </div>
+        <div class="pane canvas">
+          <img src="img/solver-step.png" alt="Step 6 of 13: attach the top" width="900" height="1125">
+          <div class="toolbar"><span>‹</span><span class="on mono">6 / 13</span><span>›</span><span>Explode</span><span>Send to chat</span></div>
+        </div>
+        <div class="pane side">
+          <div class="side-top">Solver · 0.88 confidence <a class="btn btn-wood" href="#install">Resume</a></div>
+          <div class="group">
+            <h4>Parts <span>9 of 9 found</span></h4>
+            <div class="chips">
+              <div class="chip">P1 side <span class="mono">×2</span></div>
+              <div class="chip cur">P2 top <span class="mono">×1</span></div>
+              <div class="chip">P3 bottom <span class="mono">×1</span></div>
+              <div class="chip">P4 shelf <span class="mono">×4</span></div>
+              <div class="chip">P5 back <span class="mono">×1</span></div>
+              <div class="chip">P6 plinth <span class="mono">×1</span></div>
+            </div>
+          </div>
+          <div class="group">
+            <h4>Hardware <span>holes vs. bag</span></h4>
+            <div class="row">Cam lock <span class="mono">8 / 8</span></div>
+            <div class="row">Wood dowel <span class="mono">16 / 16</span></div>
+            <div class="row warn">Shelf pin <span class="mono">10 / 12 · 2 short</span></div>
+          </div>
+          <div class="group">
+            <h4>This step</h4>
+            <div class="bar" style="--v:88%">Confidence <span class="mono">0.88</span></div>
+            <div class="bar" style="--v:46%">Progress <span class="mono">6 / 13</span></div>
+          </div>
+          <div class="group" style="border:0">
+            <h4>Photo check <span>live</span></h4>
+            <div class="check stop" id="check" aria-live="polite"><strong><i></i><span>Stop · 0.83</span></strong><span>P1 is face down. Turn it so its holes face up.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="sec" id="examples">
+    <div class="wrap sec-head rv">
+      <div>
+        <h2>Built with No Manual.</h2>
+        <p class="lead">Real runs in Hermes: a manual found from a model name, a wardrobe recorded while moving out, a bookcase worked out from four photos. And one it refused.</p>
+      </div>
+      <div class="arrows"><button aria-label="Previous" data-dir="-1"><svg style="transform:scaleX(-1)"><use href="#arrow"/></svg></button><button aria-label="Next" data-dir="1"><svg><use href="#arrow"/></svg></button></div>
+    </div>
+    <div class="rail" id="rail">
+      <article class="ex">
+        <div class="shot"><img src="img/solver-overview.png" alt="Parts overview for a bookcase" loading="lazy"><span class="tag">Solver</span></div>
+        <h3>Bookcase 80×180</h3>
+        <p>Four panel photos next to an A4 sheet. Every panel found, hardware counted, no questions needed.</p>
+        <div class="res"><span class="good">9 / 9 panels</span><span>13 steps</span></div>
+      </article>
+      <article class="ex">
+        <div class="shot" style="background:#E7DCCB"><div class="pdf"><i></i><i></i><i></i></div><span class="tag">Manual finder</span></div>
+        <h3>Bookcase 80×28×106</h3>
+        <p>Official PDF found from the seller's model name. It asked to confirm the match before using it.</p>
+        <div class="res"><span class="good">Official PDF</span><span>16 pages → steps</span></div>
+      </article>
+      <article class="ex">
+        <div class="shot"><img src="img/recorder-step.png" alt="A step card made from a disassembly photo" loading="lazy"><span class="tag">Recorder</span></div>
+        <h3>Wardrobe 90×200</h3>
+        <p>Three photos taken while taking it apart, reversed into a manual made of your own pictures.</p>
+        <div class="res"><span class="good">3 steps</span><span>Hinges counted</span></div>
+      </article>
+      <article class="ex">
+        <div class="shot" style="background:#FAFAFA"><img src="img/desktop-3d-viewer.png" alt="3D step viewer showing a closet" loading="lazy" style="object-fit:cover;object-position:40% 10%"><span class="tag">3D viewer</span></div>
+        <h3>Closet 100×200</h3>
+        <p>On Hermes Desktop the steps animate in. Previous, next, explode, orbit.</p>
+        <div class="res"><span class="good">15 steps</span><span>Drag to rotate</span></div>
+      </article>
+      <article class="ex">
+        <div class="shot fit"><img src="img/solver-step.png" alt="Step 6: attach the top" loading="lazy"><span class="tag">Step check</span></div>
+        <h3>Side panel, face down</h3>
+        <p>Caught on the step 4 photo before the cam locks went in. Approved after flipping.</p>
+        <div class="res"><span class="stop">Stop 0.83</span><span class="good">OK 0.88</span></div>
+      </article>
+      <article class="ex">
+        <div class="shot" style="background:#F2E6DD"><div class="refuse"><b>Official manual only</b>Cribs hold a child. I'll find the maker's manual, but I won't generate steps for this.</div><span class="tag">Safety</span></div>
+        <h3>Second-hand crib</h3>
+        <p>Children's furniture and anything people sit, sleep or climb on: the real manual or a clear no.</p>
+        <div class="res"><span class="stop">Refused</span><span>Manual offered</span></div>
+      </article>
+    </div>
+    <div class="wrap" style="margin-top:36px"><a class="btn btn-wood" href="#install">Try it on yours <svg><use href="#arrow"/></svg></a></div>
+  </section>
+
+  <section class="panel wood sec">
+    <div class="wrap">
+      <div class="rv">
+        <h2 style="max-width:560px">Same photos. One of them gets built.</h2>
+        <p class="lead" style="color:rgba(251,245,234,.8)">We sent the same four panel photos to a chat assistant and to Hermes with No Manual. Both answered. Only one drew your actual parts and waited to see your work.</p>
+      </div>
+      <div class="cmp rv">
+        <div class="cmp-card req">
+          <header>The request <span>word for word</span></header>
+          <div class="prompt">lost the manual for this bookcase. 80 wide, 180 tall. here are 4 photos of the panels next to an A4 sheet. how do i put it together? i don't want to do it twice</div>
+          <footer><span>4 photos attached</span><span class="send"><svg><use href="#up"/></svg></span></footer>
+        </div>
+        <div class="cmp-card">
+          <header>A chat assistant <span>text in the chat</span></header>
+          <div class="screen" aria-hidden="true"><i style="width:40%;background:#8A8076"></i><i style="width:92%"></i><i style="width:85%"></i><i style="width:70%"></i><i style="width:0;height:6px;background:none"></i><i style="width:35%;background:#8A8076"></i><i style="width:88%"></i><i style="width:95%"></i><i style="width:60%"></i><i style="width:0;height:6px;background:none"></i><i style="width:30%;background:#8A8076"></i><i style="width:80%"></i><i style="width:74%"></i></div>
+          <ul class="ticks">
+            <li><svg style="color:var(--ink-faint)"><use href="#cross"/></svg>Generic steps for "a bookcase"</li>
+            <li><svg style="color:var(--ink-faint)"><use href="#cross"/></svg>Can't tell if you did it right</li>
+            <li><svg style="color:var(--ink-faint)"><use href="#cross"/></svg>Sounds sure, even when it isn't</li>
+          </ul>
+        </div>
+        <div class="cmp-card">
+          <header>No Manual <span class="badge">Ready to build</span></header>
+          <div class="screen nm">
+            <img src="img/solver-overview.png" alt="Parts overview drawn from the photos" loading="lazy">
+            <div class="mini">
+              <div class="row">P1 side <span class="mono">×2</span></div>
+              <div class="row">P4 shelf <span class="mono">×4</span></div>
+              <div class="row">Cam lock <span class="mono">8</span></div>
+              <div class="check ok" style="margin-top:4px"><strong><i></i>Step 4 · OK</strong>Holes face up.</div>
+            </div>
+          </div>
+          <ul class="ticks">
+            <li><svg style="color:var(--green)"><use href="#tick"/></svg>Steps drawn from your real panels</li>
+            <li><svg style="color:var(--green)"><use href="#tick"/></svg>Checks a photo of every step</li>
+            <li><svg style="color:var(--green)"><use href="#tick"/></svg>Says when it isn't sure and asks</li>
+          </ul>
+        </div>
+      </div>
+      <div style="margin-top:36px"><a class="btn btn-cream" href="#install">Install the plugin <svg><use href="#arrow"/></svg></a></div>
+    </div>
+  </section>
+
+  <section class="sec" id="features">
+    <div class="wrap">
+      <div class="rv">
+        <h2>Everything after the first photo.</h2>
+        <p class="lead">The search, the drawings, the counting and the checking. Vision only reads your photos; the order, the counts and the pictures come from tested code.</p>
+      </div>
+      <div class="bento">
+        <div class="b s4 rv">
+          <div class="stage">
+            <div class="label"><span class="mono">ITEM 40-118-26<br>80×28×106</span></div>
+            <div class="float" style="width:250px">
+              <h5>Manual found <span>0.91 match</span></h5>
+              <div class="row" style="margin-top:0">assembly.pdf <span class="mono">16 pp</span></div>
+              <div style="display:flex;gap:6px;margin-top:10px"><span class="btn btn-wood" style="height:30px;font-size:12.5px;padding:0 12px">Use this one</span><span class="btn btn-line" style="height:30px;font-size:12.5px;padding:0 12px">Not mine</span></div>
+            </div>
+          </div>
+          <h3>Finds the real manual first.</h3>
+          <p>From a label, a stamped article number or the shape, using Hermes's web search. It shows you the match and waits for a yes before turning the PDF into steps.</p>
+        </div>
+        <div class="b s2 rv">
+          <div class="stage">
+            <div class="float" style="width:220px">
+              <h5>/nomanual resume</h5>
+              <div style="font-size:13px">Bookcase 80×180</div>
+              <div style="color:var(--ink-faint);font-size:12px">Step 5 of 13 · Fix the shelves</div>
+              <div class="prog"><i></i></div>
+            </div>
+          </div>
+          <h3>Picks up where you stopped.</h3>
+          <p>Say "continue my bookcase" tomorrow, in a new chat. It knows which step you're on.</p>
+        </div>
+        <div class="b s2 rv">
+          <div class="stage">
+            <div class="float" style="width:220px">
+              <h5>Hardware <span>holes vs. bag</span></h5>
+              <div class="row" style="margin-top:0">Cam lock <span class="mono">8 / 8</span></div>
+              <div class="row">Dowel <span class="mono">16 / 16</span></div>
+              <div class="row warn">Cam lock ≈15 mm <span class="mono">2 short</span></div>
+            </div>
+          </div>
+          <h3>Counts every screw.</h3>
+          <p>"Holes for 8 cam locks, but 6 found." You know before step 9, not at step 9.</p>
+        </div>
+        <div class="b s2 rv">
+          <div class="stage">
+            <div class="float" style="width:220px">
+              <div class="check stop"><strong><i></i>Stop · 0.83</strong>That panel is face down. The holes should face up.</div>
+              <div class="check ok" style="margin-top:6px"><strong><i></i>Looks right · 0.88</strong>On to step 5.</div>
+            </div>
+          </div>
+          <h3>Stops the mistake.</h3>
+          <p>Send a photo after each step. A wrong one gets caught before it costs you an hour.</p>
+        </div>
+        <div class="b s2 rv">
+          <div class="stage dotgrid">
+            <div class="rev"><img src="img/recorder-step.png" alt="" loading="lazy"><svg viewBox="0 0 16 16" style="transform:scaleX(-1)"><use href="#arrow"/></svg><img src="img/recorder-step.png" alt="" loading="lazy" style="filter:saturate(.6)"></div>
+          </div>
+          <h3>Your disassembly, in reverse.</h3>
+          <p>Moving house? Photograph each stage as it comes apart. You get a manual made of your own pictures.</p>
+        </div>
+        <div class="b s3 rv">
+          <div class="stage" style="background:#FAFAF8"><img src="img/desktop-3d-viewer.png" alt="3D step viewer in Hermes Desktop" loading="lazy" style="height:330px;width:auto;margin-top:70px"></div>
+          <h3>3D steps on the Desktop.</h3>
+          <p>Hermes Desktop shows each step in 3D: orbit it, explode it, step back. Chat apps get the same steps as images.</p>
+        </div>
+        <div class="b s3 rv">
+          <div class="stage">
+            <div class="float" style="width:250px">
+              <h5>Never generated <span>official manual only</span></h5>
+              <ul class="nolist"><li>Cribs, cots and high chairs</li><li>Bunk and loft beds</li><li>Anything you sit, sleep or climb on</li><li>Wall-mounted pieces that hold weight</li></ul>
+            </div>
+          </div>
+          <h3>Safe by default.</h3>
+          <p>Enforced twice in code, not by a prompt. Tall pieces always end with a wall-anchor step.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="modes sec" id="modes">
+    <div class="wrap">
+      <div class="rv">
+        <h2>Three ways in. One order.</h2>
+        <p class="lead">Hermes tries the real manual first, your own photos second, and works it out only when there's nothing else. Every generated step carries a confidence.</p>
+      </div>
+      <div class="plans">
+        <div class="plan rv">
+          <header>Manual finder <span class="badge" style="background:var(--oak)">Tried first</span></header>
+          <div class="for">When the piece has a name, a label or a number.</div>
+          <div class="num">01<small>/ official</small></div>
+          <div class="meta">Web search · PDF over https · max 30 MB</div>
+          <a class="btn btn-line" href="#install">Find my manual</a>
+          <ul>
+            <li><svg><use href="#tick"/></svg>Reads labels and stamped numbers</li>
+            <li><svg><use href="#tick"/></svg>Asks you to confirm the match</li>
+            <li><svg><use href="#tick"/></svg>Turns the PDF pages into steps</li>
+            <li><svg><use href="#tick"/></svg>Says "not identified" instead of guessing</li>
+          </ul>
+        </div>
+        <div class="plan hl rv">
+          <header>Disassembly recorder <span class="badge">Moving house</span></header>
+          <div class="for">When it's still standing and you have to take it apart.</div>
+          <div class="num">02<small>/ your photos</small></div>
+          <div class="meta">One photo per stage · reversed at the end</div>
+          <a class="btn btn-wood" href="#install">Record a teardown</a>
+          <ul>
+            <li><svg><use href="#tick"/></svg>Notes what changed between photos</li>
+            <li><svg><use href="#tick"/></svg>Counts hinges, screws and pins</li>
+            <li><svg><use href="#tick"/></svg>Builds the steps back up in order</li>
+            <li><svg><use href="#tick"/></svg>Your pictures, not stock drawings</li>
+          </ul>
+        </div>
+        <div class="plan rv">
+          <header>Flat-pack solver</header>
+          <div class="for">When all you have is a pile of panels and a bag.</div>
+          <div class="num">03<small>/ worked out</small></div>
+          <div class="meta">Closets · wardrobes · bookcases · cabinets</div>
+          <a class="btn btn-line" href="#install">Solve my pile</a>
+          <ul>
+            <li><svg><use href="#tick"/></svg>Panel sizes from photos and a tape</li>
+            <li><svg><use href="#tick"/></svg>Assembly order from tested templates</li>
+            <li><svg><use href="#tick"/></svg>Below 0.6 it asks before it answers</li>
+            <li><svg><use href="#tick"/></svg>Step drawings from real geometry</li>
+          </ul>
+        </div>
+      </div>
+      <div class="strip rv" id="install">
+        <div>
+          <h4>Free and open source</h4>
+          <p>MIT licensed. Runs through Hermes on the vision model you already use: no keys of its own, no telemetry. Photos stay in your Hermes data folder until you delete the project.</p>
+        </div>
+        <div class="cmd"><code id="cmd">hermes plugins install &lt;owner&gt;/no-manual --enable</code><button data-copy="#cmd">Copy</button></div>
+      </div>
+      <div class="foot rv">
+        <ul><li>Hermes v0.23.0+</li><li>Vision-capable model</li><li>14 tools, 2 hooks, 1 skill</li><li>Telegram, WhatsApp, CLI, Desktop</li><li>103 tests passing</li></ul>
+        <a href="../README.md" style="font-weight:500;color:var(--ink)">Read the README →</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="faq">
+    <div class="wrap faq">
+      <h2 class="rv">Questions about No Manual.</h2>
+      <div class="rv">
+        <details><summary>Do I need anything besides photos?<svg><use href="#plus"/></svg></summary><p>A tape measure helps the solver. Put an A4 sheet or a known object in the panel photos and it can read sizes from the pictures. For the manual finder, a photo of any label or stamped number is the fastest route.</p></details>
+        <details><summary>What furniture does it work on?<svg><use href="#plus"/></svg></summary><p>The manual finder and recorder work on almost anything. The solver handles carcass furniture: closets, wardrobes, bookcases, cabinets and nightstands. Drawers with runners are on the roadmap.</p></details>
+        <details><summary>Why won't it help with my crib or bunk bed?<svg><use href="#plus"/></svg></summary><p>A wrong guess there can hurt someone. For children's furniture and anything people sit, sleep, stand or climb on, it only finds the official manual. That rule lives in the tool code and a hook, so no prompt can talk it out of it.</p></details>
+        <details><summary>What happens when it isn't sure?<svg><use href="#plus"/></svg></summary><p>Every step has a confidence. Below 0.6 it asks a targeted question instead of answering. Between 0.6 and 0.75 the step gets an amber "Check this step" badge and Hermes asks for a photo.</p></details>
+        <details><summary>Where do my photos go?<svg><use href="#plus"/></svg></summary><p>To your own model provider through Hermes, to read panels and labels. They're stored in your Hermes data folder and removed with /nomanual delete. Nothing is sent anywhere else.</p></details>
+        <details><summary>Which model does it need?<svg><use href="#plus"/></svg></summary><p>Any vision-capable model you've configured in Hermes. All model calls go through Hermes, so the plugin has no keys or accounts of its own.</p></details>
+        <details><summary>How are the step pictures made?<svg><use href="#plus"/></svg></summary><p>Drawn from the geometry of your actual parts with plain code, never by an image model. That's why the drawing always matches the panel in your hands.</p></details>
+        <details><summary>Does it work in Telegram?<svg><use href="#plus"/></svg></summary><p>Yes. Steps arrive as images in Telegram, WhatsApp and the other chat apps Hermes connects to. Hermes Desktop adds the interactive 3D viewer.</p></details>
+        <details><summary>What does it cost?<svg><use href="#plus"/></svg></summary><p>Nothing. It's MIT-licensed. You only pay your usual model usage through Hermes.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel wood closing">
+    <div class="wrap">
+      <h2 class="rv">Build it anyway.</h2>
+      <p class="rv">Lost manual, second-hand flat-pack, or a wardrobe you have to take apart. Send the photos.</p>
+      <div class="cmd rv"><code id="cmd2">hermes plugins install &lt;owner&gt;/no-manual --enable</code><button data-copy="#cmd2">Copy</button></div>
+      <div class="cards3 rv" aria-hidden="true"><img src="img/solver-overview.png" alt="" loading="lazy"><img src="img/solver-step.png" alt="" loading="lazy"><img src="img/recorder-step.png" alt="" loading="lazy"></div>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="fgrid">
+      <div>
+        <a class="logo" href="#top"><svg><use href="#mark"/></svg>No Manual</a>
+        <div class="tag-line">Furniture instructions, when there aren't any.</div>
+        <span class="status"><i></i>103 tests passing</span>
+      </div>
+      <div><h6>Product</h6><ul><li><a href="#examples">Examples</a></li><li><a href="#features">Features</a></li><li><a href="#modes">Modes</a></li><li><a href="#faq">FAQ</a></li></ul></div>
+      <div><h6>Project</h6><ul><li><a href="../README.md">README</a></li><li><a href="../docs/08-SAFETY-AND-RULES.md">Safety rules</a></li><li><a href="../docs/BRAND.md">Brand</a></li><li><a href="../LICENSE">MIT license</a></li></ul></div>
+      <div><h6>Built for</h6><ul><li>Hermes Agent</li><li>Nous Research plugin hackathon</li></ul></div>
+    </div>
+    <div class="copy"><span>© 2026 No Manual</span><span>Generated steps are a best effort. Follow the official manual whenever one exists.</span></div>
+  </div>
+</footer>
+
+<script>
+document.documentElement.classList.add('js');
+// nav turns solid once the hero scrolls away
+const nav = document.getElementById('nav');
+const onScroll = () => nav.classList.toggle('solid', scrollY > 40);
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+// reveal on scroll
+const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
+document.querySelectorAll('.rv').forEach(el => io.observe(el));
+
+// example rail arrows
+const rail = document.getElementById('rail');
+document.querySelectorAll('.arrows button').forEach(b => b.addEventListener('click', () => rail.scrollBy({ left: +b.dataset.dir * 286, behavior: 'smooth' })));
+
+// copy install command
+document.querySelectorAll('[data-copy]').forEach(b => b.addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(document.querySelector(b.dataset.copy).textContent); b.textContent = 'Copied'; }
+  catch { b.textContent = 'Select it'; }
+  setTimeout(() => b.textContent = 'Copy', 1600);
+}));
+
+// live step check in the hero mockup: stop → flipped → approved
+const check = document.getElementById('check'), reply = document.getElementById('chatReply');
+const states = [
+  ['stop', 'Stop · 0.83', 'P1 is face down. Turn it so its holes face up.', 'Stop. P1 is face down: the holes should face up. Turn it over, then send another photo.'],
+  ['ok', 'Looks right · 0.88', 'Holes up, finished edge to the front. On to step 7.', 'That’s right. Holes up, finished edge to the front. Step 7: fix the shelves.']
+];
+let s = 0;
+if (!matchMedia('(prefers-reduced-motion: reduce)').matches) setInterval(() => {
+  s = 1 - s; const [cls, head, body, msg] = states[s];
+  check.className = 'check ' + cls;
+  check.querySelector('strong span').textContent = head;
+  check.lastElementChild.textContent = body;
+  reply.textContent = msg;
+}, 3200);
+</script>
+</body>
+</html>
