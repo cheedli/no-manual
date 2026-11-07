@@ -57,7 +57,10 @@ Mode order (ADR-002): **official manual → disassembly recorder → solver**.
 | Closet 100×200 scene in the Desktop step viewer | 3D viewer | ✅ Steps animate in, prev/next, explode, orbit, theme colours | Verified in Chromium (WebGL) with the bundled `plugin.js`; Hermes Desktop not installed on the test machine |
 | "Continue my bookcase" in a new session | resume | ✅ Found the project, resumed at step 5 of 13 | |
 | "Help me assemble this second-hand crib" | safety | ✅ Offered the official manual only, refused to generate steps | |
-| Real flat-pack piece on Telegram | all | ⏳ To be run before submission | |
+| Real Flickr photo of a black-brown BILLY + extension, no label | manual | ✅ After the user gave 80×28×202 + a 35 cm top box and confirmed the match: both official PDFs (bookcase and extension) from ikea.com attached, 16 steps each | Real photo (CC BY). Searched with the model's native web search |
+| Real photo of loose dark panels with drawer runners on a rug | solver | ✅ Saw the runners, said drawers are out of scope for generated steps, asked for the label sticker | Real photo (CC BY-NC-ND), honest refusal |
+| Real photo of a half-built cabinet, panels overlapping on a floor | solver | ✅ Part confidence 0.2–0.38, no sizes → no steps; asked for flat, separated panel photos + hardware photo | Real photo (CC BY): refuses to guess from a bad photo |
+| Real flat-pack piece, panels photographed flat | solver | ⏳ To be run before submission | No openly licensed photo set of separated panels exists online |
 
 Unit and contract tests: 104 passing (`pytest -q`), including all solver fixtures, golden images
 and the safety gate. `hermes plugins validate . --install-deps` passes.
