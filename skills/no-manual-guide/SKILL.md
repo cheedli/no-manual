@@ -25,7 +25,8 @@ description: Use when someone needs to assemble or reassemble furniture without 
      on the back panel, inside doors or drawers). Pass what the user knows (brand, store, name) in
      `user_text`.
    - Call `nm_identify`. Then run `web_search` with its `search_queries`. Prefer the
-     manufacturer's own site. You need a direct https link to the PDF.
+     manufacturer's own site. You need a direct https link to the PDF. Never say you found a
+     manual unless `web_search` actually returned its link.
    - If identification was uncertain, say so and ask the user to compare: "Is this your
      <product>?" before using the manual. Never attach a manual for a different product.
    - Found it → `nm_attach_manual` (pdf_url + source_page), tell the user "Official manual from

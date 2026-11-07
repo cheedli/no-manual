@@ -309,10 +309,18 @@ def nm_identify(ctx, args, **kw):
     if not found_something or conf < 0.4:
         fallback = ("only the official manual is allowed for this piece; suggest contacting the manufacturer."
                     if p.blocked else "use the recorder (if assembled) or the solver (if in pieces).")
-        nxt = ("Not identified with confidence. Ask for a photo of a label, sticker or stamped number (under "
-               "shelves, back panel, inside doors). If the user named a brand, you may still run web_search "
-               "with search_queries, but present any match as a possibility and ask the user to confirm it "
-               "is their exact piece before attaching it. If nothing turns up: " + fallback)
+        if ident.get("search_queries") and conf >= 0.5:
+            nxt = ("Not confirmed (no label read), but the shape suggests a known product. Run web_search with "
+                   "search_queries now. If it returns the official PDF, present it as a possible match (\"It "
+                   "looks like <product>; is that yours?\") and attach it only after the user confirms. Also ask "
+                   "for a photo of any label to be sure. If nothing turns up: " + fallback)
+        else:
+            nxt = ("Not identified with confidence. Ask for a photo of a label, sticker or stamped number "
+                   "(under shelves, back panel, inside doors). If the user named a brand, you may still run "
+                   "web_search with search_queries, but present any match as a possibility and ask the user to "
+                   "confirm it is their exact piece before attaching it. If nothing turns up: " + fallback)
+    # ponytail: the model once claimed "I found the manual" without searching; say it in every branch.
+    nxt += " Never say you found a manual unless web_search returned its link in this conversation."
     return _ok(project_id=p.id, brand=ident.get("brand", ""), product_name=ident.get("product_name", ""),
                article_numbers=ident.get("article_numbers") or [], category_guess=ident.get("category_guess"),
                confidence=conf, search_queries=ident.get("search_queries") or [],
