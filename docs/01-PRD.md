@@ -1,6 +1,6 @@
 # PRD — No Manual
 
-**Status:** Locked for hackathon MVP · **Date:** 6 Nov 2026 · **Owner:** [TBD: your name]
+**Status:** Locked for hackathon MVP · **Date:** 6 Nov 2026 · **Owner:** Octav3rse (@cheedli)
 
 ## 1. Problem
 People regularly end up with furniture they cannot assemble:

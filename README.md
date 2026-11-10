@@ -32,7 +32,7 @@ with a wall-anchoring step.
 
 ## Install
 ```bash
-hermes plugins install <owner>/no-manual --enable
+hermes plugins install cheedli/no-manual --enable
 hermes gateway restart        # once, so the PDF renderer dependency is loaded
 ```
 Requires a **vision-capable model** in Hermes (tested with `gpt-6.1-sol` via ChatGPT sign-in).
