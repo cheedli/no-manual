@@ -7,6 +7,12 @@ No Manual finds the official manual, turns your disassembly photos into a manual
 works out flat-pack assembly from the parts. Then it coaches you step by step and checks a photo of
 each step before you move on.
 
+## Demo (56 s)
+[![No Manual demo: real people stuck without a manual, then Hex the hex key and Hermes read the parts, catch a wrong step and build it in 3D](assets/demo-preview.gif)](assets/demo.mp4)
+
+▶️ **[Watch the full demo with sound](assets/demo.mp4)**. Every Hermes screen in it is a real
+recording of the plugin running. Footage credits are [at the bottom](#demo-credits).
+
 ## What it does
 - 🔎 **Finds the real manual** from labels, stamped article numbers and shape, using Hermes's web
   search. It asks you to confirm the match before using it.
@@ -119,5 +125,18 @@ hermes plugins doctor . --ci && hermes plugins validate . --install-deps
 ./scripts/build_desktop.sh      # rebuilds desktop/plugin.js from desktop/src/ (pinned three.js + esbuild)
 ```
 
+## Demo credits
+The opening clips are real people's videos, used under the
+[Creative Commons Attribution license](https://creativecommons.org/licenses/by/3.0/) (YouTube's
+"CC BY" option), trimmed and cropped:
+- Mary Grace (@MaryGraceBurdick): [building ikea furniture and losing the will to live :)](https://www.youtube.com/watch?v=rP6p5Z9Lj-E)
+- Investigael: [I tried building an IKEA Chest of Drawers at home](https://www.youtube.com/watch?v=n-0Bl7CqW6E)
+- Akeira Janee' (@AkeiraJanee): [Struggling to put up IKEA Furniture](https://www.youtube.com/watch?v=5XeCeZsNCNk)
+- Swift (@swift1218): [My UNFINISHABLE ikea drawer lock](https://www.youtube.com/watch?v=oHvm-ctoBFE)
+
+Music and sound effects are CC0. The voice-over is synthetic (Microsoft Azure neural voice "Ava").
+The demo was made with [HyperFrames](https://hyperframes.studio); Hex, the mascot, was drawn for
+this project.
+
 ## License
-MIT
+MIT (code). The demo video's third-party clips keep their own CC BY license (see above).
